@@ -220,11 +220,15 @@ function entityreference_autofill_form_autofill($form, $form_state) {
   // @TODO: Modify form_alter and this to return individual ajax
   // commands for each altered field.
   // @TODO: Add ajax commands to refresh other entityreference autofill fields
+
+  // For debugging
   dpm($form_state);
   $form['statusmessages'] = array(
     '#markup' => theme('status_messages'),
     '#weight' => -1000,
   );  
+
+
   return $form;
 }
 
