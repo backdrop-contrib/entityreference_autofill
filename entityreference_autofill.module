@@ -173,13 +173,11 @@ function entityreference_autofill_form_alter(&$form, &$form_state) {
     }
     
     // Reference entity metadata
-    $referenced_entity_type = $reference_field['instance']['entity_type'];
+    $referenced_entity_type = $reference_field['field']['settings']['target_type'];
     $referenced_target_id = $form_state['values'][$reference_field_name][LANGUAGE_NONE][0]['target_id'];
 
     // Load referenced entity
     $referenced_entity = entity_load_single($referenced_entity_type, $referenced_target_id);
-    $form_state['ref'] = $referenced_entity;
-    return;
     list(, , $referenced_entity->bundle) = entity_extract_ids($referenced_entity_type, $referenced_entity);
     
     // Determine form_id for related entity
@@ -192,7 +190,11 @@ function entityreference_autofill_form_alter(&$form, &$form_state) {
     // @TODO: There must be some better way to do this.
     $referenced_entity_form_state = array('build_info' => array('args' => array($referenced_entity)));
     drupal_build_form($form_id, $referenced_entity_form_state);
-    
+    $form_state['ref'] = array(
+      $referenced_entity,
+      $form_id,
+      $referenced_entity_form_state
+    );    
     // Populate fields with values from referenced node
     // @TODO: Handle overwrite setting
     $autofill_fields = $autofill_bundle_settings[$reference_field_name]['fields'];
@@ -217,9 +219,12 @@ function entityreference_autofill_form_alter(&$form, &$form_state) {
 function entityreference_autofill_form_autofill($form, $form_state) {
   // @TODO: Modify form_alter and this to return individual ajax
   // commands for each altered field.
-  $form['messages'] = array(
-    '#markup' => theme('messages'),
-  );
+  // @TODO: Add ajax commands to refresh other entityreference autofill fields
+  dpm($form_state);
+  $form['statusmessages'] = array(
+    '#markup' => theme('status_messages'),
+    '#weight' => -1000,
+  );  
   return $form;
 }
 
