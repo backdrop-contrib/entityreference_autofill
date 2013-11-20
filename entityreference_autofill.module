@@ -128,6 +128,9 @@ function entityreference_autofill_field_widget_form_alter(&$element, &$form_stat
   // Add ajax callback to element
   $element['target_id']['#ajax'] = array(
     'callback' => 'entityreference_autofill_form_autofill',
+    // @TODO: Wrapper will be removed when ajax_replace_commands
+    // are implemented in place of form replace
+    'wrapper' => 'entityreference-autofill-form',
   );
 }
 
@@ -135,7 +138,6 @@ function entityreference_autofill_field_widget_form_alter(&$element, &$form_stat
  *  Implements hook_form_alter().
  */
 function entityreference_autofill_form_alter(&$form, &$form_state) {
-  dpm($form);
   // Is this condition enough for checking that we're working with an entity form? 
   if(!isset($form['#entity_type'], $form['#bundle'])) {
     return;
@@ -154,18 +156,17 @@ function entityreference_autofill_form_alter(&$form, &$form_state) {
   // Autofill settings for this forms associated bundle
   $autofill_bundle_settings = $autofill_settings[$entity_type][$bundle];
   
-  // Add ajax replacement wrapper
+  // @TODO: Ajax replacement wrapper will be removed when ajax_replace_commands
+  // are implemented instead of replacing entire form
   $form['#prefix'] = '<div id="entityreference-autofill-form">';
   $form['#suffix'] = '</div>';
      
   // Ajax call handler
-  // @TODO: Add conditions that verify that this is a autofill call or is this along with #56 enough?
   if(isset($form_state['triggering_element']['#ajax'])) {
-
     $reference_field_name = $form_state['triggering_element']['#field_name'];
     $reference_field = $form_state['field'][$reference_field_name][LANGUAGE_NONE];
 
-    // If no fields are enabled for autofill
+    // If no fields are enabled for autofill / Triggering element is not autofill field
     if(empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
       return;
     }
@@ -180,37 +181,20 @@ function entityreference_autofill_form_alter(&$form, &$form_state) {
     // Populate fields with values from referenced node
     // @TODO: Handle overwrite setting
     $autofill_fields = $autofill_bundle_settings[$reference_field_name]['fields'];
-    $new_values = array();
-    
-    
-    dpm($form);
-    dpm($form_state);
     foreach($autofill_fields as $field_name) {
       if(isset($form[$field_name])) {
-        // Prepare value(s)
+        // Load new value(s)
         $value = $referenced_entity->{$field_name};
-        $form_state['rabaarb'][] = $value;
         if(!empty($value) && isset($form_state['values'][$field_name])) {
-          // Create element for form_set_value
-          $element = $form[$field_name];
-          $element['#parents'] = array($field_name);
-          // Wrap language around value   
-          $value = $value[$element['#language']];
-          $value = array(
-            $element['#language'] => $value,
-          );
-          form_set_value($element, $value, $form_state);
-          $new_values[] = $element;
-        }
-        if(!empty($new_values)){
-          $form_state['rebuild'] = TRUE;
-          $form_state['autofill_commands'] = array();
-          foreach($new_values as $new_value){
-            $form_state['autofill_commands'][] = ajax_command_replace($new_value['#id'], render($new_value));
-          }
+          // Set new value in form state
+          $lang = $form[$field_name]['#language'];
+          // @TODO: Make work with multiple valued fields / use better method ?
+          $form_state['input'][$field_name][$lang] = $value[$lang];
+          $form_state['values'][$field_name][$lang] = $value[$lang];
         }
       }
     }
+    $form_state['rebuild'] = TRUE;
   }
 }
 
@@ -218,14 +202,8 @@ function entityreference_autofill_form_alter(&$form, &$form_state) {
  *  Ajax callback: return prepopulated form
  */
 function entityreference_autofill_form_autofill($form, $form_state) {
-
-  $commands = $form_state['autofill_commands'];
-  $messages = theme('status_messages');
-  $commands[] = ajax_command_replace('#messages', '<div id="messages">'.$messages.'</div>');
-  $response = array(
-    '#type' => 'ajax',
-    '#commands' => $commands,
-  );
+  // @TODO: Change this and form_alter to use ajax_commands for
+  // each updated field instead
   return $form;
 }
 
@@ -256,6 +234,7 @@ function _entityreference_autofill_get_settings() {
 }
 
 /**
+ *  #validate callback for field_ui_field_edit_form
  *  Clean up field array in widget settings.
  */
 function _entityreference_autofill_cleanup_options(&$form, &$form_state) {
