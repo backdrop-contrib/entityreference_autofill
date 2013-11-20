@@ -183,7 +183,10 @@ function entityreference_autofill_form_alter(&$form, &$form_state) {
     $autofill_fields = $autofill_bundle_settings[$reference_field_name]['fields'];
     foreach($autofill_fields as $field_name) {
       if(isset($form[$field_name])) {
-        // Load new value(s)
+        // Load new value
+        // @TODO: How should form values be loaded/rendered? Entity values contain additional elements
+        // who aren't relevant for form processing/display. Multi-valued fields do not render more values
+        // than already present either.
         $value = $referenced_entity->{$field_name};
         if(!empty($value) && isset($form_state['values'][$field_name])) {
           // Set new value in form state
@@ -209,7 +212,7 @@ function entityreference_autofill_form_autofill($form, $form_state) {
 
 /**
  *  Return array of fields that have autofill enabled.
- *  @TODO: This needs to be cached, as it is called on every entity form build.
+ *  @TODO: This needs to be cached, as it is called on every entity form build (incl. ajax callbacks?).
  */
 function _entityreference_autofill_get_settings() {
   $field_map = field_info_field_map();
