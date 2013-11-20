@@ -1,0 +1,6 @@
+name = Entity Reference Form Autofill
+description = Support for adding data to entity form fields from same-field instances in referenced entities.
+core = 7.x
+package = Fields
+
+dependencies[] = entityreference
