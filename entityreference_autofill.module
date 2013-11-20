@@ -126,11 +126,8 @@ function entityreference_autofill_field_widget_form_alter(&$element, &$form_stat
   }
  
   // Add ajax callback to element
-  // @TODO: Move to form_alter instead in order to add form_id dependant wrapper?
-  // (Would allow for several forms on same page)
   $element['target_id']['#ajax'] = array(
     'callback' => 'entityreference_autofill_form_autofill',
-    'wrapper' => 'entityreference-autofill-form',
   );
 }
 
@@ -138,6 +135,7 @@ function entityreference_autofill_field_widget_form_alter(&$element, &$form_stat
  *  Implements hook_form_alter().
  */
 function entityreference_autofill_form_alter(&$form, &$form_state) {
+  dpm($form);
   // Is this condition enough for checking that we're working with an entity form? 
   if(!isset($form['#entity_type'], $form['#bundle'])) {
     return;
@@ -178,38 +176,41 @@ function entityreference_autofill_form_alter(&$form, &$form_state) {
 
     // Load referenced entity
     $referenced_entity = entity_load_single($referenced_entity_type, $referenced_target_id);
-    list(, , $referenced_entity->bundle) = entity_extract_ids($referenced_entity_type, $referenced_entity);
-    
-    // Determine form_id for related entity
-    // @TODO: This can't be sound ;)
-    $form_id = (!isset($referenced_entity->bundle) || $referenced_entity->bundle == $referenced_entity_type) ?
-                $referenced_entity_type . '_form' :
-                $referenced_entity->bundle . '_' . $referenced_entity_type . '_form';
-    
-    // Load related entity form state in order to get correctly formatted values (quick and dirty).
-    // @TODO: There must be some better way to do this.
-    $referenced_entity_form_state = array('build_info' => array('args' => array($referenced_entity)));
-    drupal_build_form($form_id, $referenced_entity_form_state);
-    $form_state['ref'] = array(
-      $referenced_entity,
-      $form_id,
-      $referenced_entity_form_state
-    );    
+
     // Populate fields with values from referenced node
     // @TODO: Handle overwrite setting
     $autofill_fields = $autofill_bundle_settings[$reference_field_name]['fields'];
-    $values = array();
+    $new_values = array();
+    
+    
+    dpm($form);
+    dpm($form_state);
     foreach($autofill_fields as $field_name) {
-      if(isset($form[$field_name])) {    
-        $value = $referenced_entity_form_state['values'][$field_name];
+      if(isset($form[$field_name])) {
+        // Prepare value(s)
+        $value = $referenced_entity->{$field_name};
+        $form_state['rabaarb'][] = $value;
         if(!empty($value) && isset($form_state['values'][$field_name])) {
-          $form_state['values'][$field_name] = $value;
-          $form_state['input'][$field_name] = $value;
-          $rebuild = TRUE;
+          // Create element for form_set_value
+          $element = $form[$field_name];
+          $element['#parents'] = array($field_name);
+          // Wrap language around value   
+          $value = $value[$element['#language']];
+          $value = array(
+            $element['#language'] => $value,
+          );
+          form_set_value($element, $value, $form_state);
+          $new_values[] = $element;
+        }
+        if(!empty($new_values)){
+          $form_state['rebuild'] = TRUE;
+          $form_state['autofill_commands'] = array();
+          foreach($new_values as $new_value){
+            $form_state['autofill_commands'][] = ajax_command_replace($new_value['#id'], render($new_value));
+          }
         }
       }
     }
-    $form_state['rebuild'] = isset($rebuild);
   }
 }
 
@@ -217,18 +218,14 @@ function entityreference_autofill_form_alter(&$form, &$form_state) {
  *  Ajax callback: return prepopulated form
  */
 function entityreference_autofill_form_autofill($form, $form_state) {
-  // @TODO: Modify form_alter and this to return individual ajax
-  // commands for each altered field.
-  // @TODO: Add ajax commands to refresh other entityreference autofill fields
 
-  // For debugging
-  dpm($form_state);
-  $form['statusmessages'] = array(
-    '#markup' => theme('status_messages'),
-    '#weight' => -1000,
-  );  
-
-
+  $commands = $form_state['autofill_commands'];
+  $messages = theme('status_messages');
+  $commands[] = ajax_command_replace('#messages', '<div id="messages">'.$messages.'</div>');
+  $response = array(
+    '#type' => 'ajax',
+    '#commands' => $commands,
+  );
   return $form;
 }
 
