@@ -228,7 +228,7 @@ function _entityreference_autofill_populate_element($element, &$form_state, $com
     $autofill_settings = _entityreference_autofill_get_settings();
     $triggering_element = $form_state['triggering_element'];
     $reference_field_name = $triggering_element['#field_name'];
-  
+    // See form. inc around #1800 for processing context
     dpm($element['#id']);
   
    }
