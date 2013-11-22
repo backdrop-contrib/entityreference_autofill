@@ -1,6 +1,12 @@
 <?php
 /**
- *  Implements hook_field_widget_info_alter().
+* @file
+* Entity reference autofill module.
+*/
+
+
+/**
+ * Implements hook_field_widget_info_alter().
  */
 function entityreference_autofill_field_widget_info_alter(&$info) {
   // Add autofill settings to autocomplete widget.
@@ -15,22 +21,22 @@ function entityreference_autofill_field_widget_info_alter(&$info) {
 }
 
 /**
- *  Implements hook_element_form_FORM_ID_alter().
+ * Implements hook_element_form_FORM_ID_alter().
  */
 function entityreference_autofill_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
   $instance = $form['#instance'];
   $widget = $instance['widget'];
-  
+
   if ($widget['type'] !== 'entityreference_autocomplete') {
     return;
   }
   $settings = $instance['widget']['settings'];
   $widget_form = &$form['instance']['widget']['settings'];
-  
-  // Add module settings to widget form
+
+  // Add module settings to widget form.
   $widget_form['autofill'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Autofill settings'), 
+    '#title' => t('Autofill settings'),
   );
   $widget_form['autofill']['enabled'] = array(
     '#type' => 'checkbox',
@@ -38,35 +44,35 @@ function entityreference_autofill_form_field_ui_field_edit_form_alter(&$form, &$
     '#default_value' => $settings['autofill']['enabled'],
     '#description' => t('Select if you want to autofill form fields with values from the entity referenced in this field.'),
   );
-  
-  // Load available fields from instance bundle
+
+  // Load available fields from instance bundle.
   $entity_type = $instance['entity_type'];
   $bundle_name = $instance['bundle'];
   $bundle_info = field_info_instances($entity_type, $bundle_name);
-  
-  // Field target metadata
+
+  // Field target metadata.
   $field_map = field_info_field_map();
   $target_type = $form['#field']['settings']['target_type'];
   $target_bundles = $form['#field']['settings']['handler_settings']['target_bundles'];
-  
-  // Skip autofill for the reference field
+
+  // Skip autofill for the reference field.
   unset($bundle_info[$instance['field_name']]);
-  
-  // Conditional display of sub-fields
+
+  // Conditional display of sub-fields.
   $enabled_states = array(
     'visible' => array(
       ':input[name="instance[widget][settings][autofill][enabled]"]' => array('checked' => TRUE),
     ),
   );
-  
+
   // Create checkboxes options for available fields.
   $field_options = array();
-  foreach($bundle_info as $field_name => $field_info) {
-    if(!empty($field_map[$field_name]['bundles'][$target_type])) {
+  foreach ($bundle_info as $field_name => $field_info) {
+    if (!empty($field_map[$field_name]['bundles'][$target_type])) {
       $available_bundles = $field_map[$field_name]['bundles'][$target_type];
-      // Determine all targeted bundles that use this field
+      // Determine all targeted bundles that use this field.
       $option_bundles = empty($target_bundles) ? $available_bundles : array_intersect($target_bundles, $available_bundles);
-      if(!empty($option_bundles)) {
+      if (!empty($option_bundles)) {
         $field_options[$field_name] = t(
           '@field_label (@field_name): <em>Available in bundle(s) @bundles</em>',
           array(
@@ -78,8 +84,8 @@ function entityreference_autofill_form_field_ui_field_edit_form_alter(&$form, &$
       }
     }
   }
-  
-  if(!empty($field_options)) {
+
+  if (!empty($field_options)) {
     $widget_form['autofill']['overwrite'] = array(
       '#type' => 'checkbox',
       '#title' => t('Overwrite existing data'),
@@ -95,14 +101,14 @@ function entityreference_autofill_form_field_ui_field_edit_form_alter(&$form, &$
       '#description' => t('Select which fields from the referenced entity you want to load on changing the value of this field.'),
       '#states' => $enabled_states,
     );
-    
+
     // Remove unset options from settings
     // Is #validate preferred way to do this?
-    if(empty($form['#validate'])) {
+    if (empty($form['#validate'])) {
       $form['#validate'] = array();
     }
     array_unshift($form['#validate'], '_entityreference_autofill_cleanup_options');
-    
+
     // Add submission handler to rebuild cached autofill settings. 
     $form['#submit'][] = '_entityreference_autofill_form_submit_reset_cache';
   }
@@ -116,17 +122,17 @@ function entityreference_autofill_form_field_ui_field_edit_form_alter(&$form, &$
 }
 
 /**
- *  Implements hook_field_widget_form_alter().
+ * Implements hook_field_widget_form_alter().
  */
 function entityreference_autofill_field_widget_form_alter(&$element, &$form_state, $context) {
-  if($context['field']['type'] !== 'entityreference' ||
+  if ($context['field']['type'] !== 'entityreference' ||
      $context['instance']['widget']['type'] !== 'entityreference_autocomplete' ||
      !$context['instance']['widget']['settings']['autofill']['enabled'])
   {
     return;
   }
- 
-  // Add ajax callback to element
+
+  // Add ajax callback to element.
   $element['target_id']['#ajax'] = array(
     'callback' => 'entityreference_autofill_form_autofill',
     'wrapper' => 'entityreference-autofill-form',
@@ -134,94 +140,94 @@ function entityreference_autofill_field_widget_form_alter(&$element, &$form_stat
 }
 
 /**
- *  Implements hook_form_alter().
+ * Implements hook_form_alter().
  */
 function entityreference_autofill_form_alter(&$form, &$form_state) {
-  // Is this condition enough for checking that we're working with an entity form? 
-  if(!isset($form['#entity_type'], $form['#bundle'])) {
-    return;
-  }
-  
-  // Get info about current entity
-  $entity_type = $form['#entity_type'];
-  $bundle = $form['#bundle'];
-  
-  // Get array of fields that have enabled autofill
-  $autofill_settings = _entityreference_autofill_get_settings();
-  
-  // No autofill references in this bundle
-  if(empty($autofill_settings[$entity_type][$bundle])) {
+  // Is this condition enough for checking that we're working with an entity form?
+  if (!isset($form['#entity_type'], $form['#bundle'])) {
     return;
   }
 
-  // Add ajax wrapper around form
+  // Get info about current entity.
+  $entity_type = $form['#entity_type'];
+  $bundle = $form['#bundle'];
+
+  // Get array of fields that have enabled autofill.
+  $autofill_settings = _entityreference_autofill_get_settings();
+
+  // No autofill references in this bundle.
+  if (empty($autofill_settings[$entity_type][$bundle])) {
+    return;
+  }
+
+  // Add ajax wrapper around form.
   $form['#prefix'] = '<div id="entityreference-autofill-form">';
   $form['#suffix'] = '</div>';
- 
+
   $form_state['entityreference_autofill_settings'] = $autofill_settings[$entity_type][$bundle];
 }
 
 /**
- *  Implements hook_field_attach_form().
+ * Implements hook_field_attach_form().
  */
 function entityreference_autofill_field_attach_form($entity_type, $entity, &$form, &$form_state, $langcode) {
-  if(isset($form_state['entityreference_autofill_settings'], $form_state['triggering_element']['#ajax'])) {
-    
+  if (isset($form_state['entityreference_autofill_settings'], $form_state['triggering_element']['#ajax'])) {
+
     $triggering_element = $form_state['triggering_element'];
     $reference_field_name = $triggering_element['#field_name'];
-
-    // Get info about current entity
+    
+    // Get info about current entity.
     $autofill_bundle_settings = $form_state['entityreference_autofill_settings'];
 
-    // Process autofill fields if enabled
-    if(!empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
+    // Process autofill fields if enabled.
+    if (!empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
       $reference_field = $form_state['field'][$reference_field_name][$triggering_element['#language']];
-    
-      // Reference entity metadata
+
+      // Reference entity metadata.
       $referenced_entity_type = $reference_field['field']['settings']['target_type'];
       $referenced_target_id = drupal_array_get_nested_value($form_state['values'], $triggering_element['#parents']);
-      
-      // Load referenced entity
+
+      // Load referenced entity.
       $referenced_entity = entity_load_single($referenced_entity_type, $referenced_target_id);
 
-      // Populate fields with values from referenced node
+      // Populate fields with values from referenced node.
       // @TODO: Handle overwrite setting properly?
       $autofill_fields = $autofill_bundle_settings[$reference_field_name]['fields'];
       $overwrite = $autofill_bundle_settings[$reference_field_name]['overwrite'];
-      foreach($autofill_fields as $field_name) {
-        if(isset($form[$field_name])) {
-          // Handle overwrite setting (Experimental)
+      foreach ($autofill_fields as $field_name) {
+        if (isset($form[$field_name])) {
+          // Handle overwrite setting (Experimental).
           // @TODO: Not sure how good this works, neither if there's a more efficient way to do it.
-          if(!$overwrite) {
+          if (!$overwrite) {
             $has_value = FALSE;
-            if(!empty($form_state['input'][$field_name])) {
+            if (!empty($form_state['input'][$field_name])) {
               $input = $form_state['input'][$field_name];
-              // Traverse to deepest level of input
-              while(is_array($input)) {
+              // Traverse to deepest level of input.
+              while (is_array($input)) {
                 $last = $input;
                 $input = reset($input);
               }
               $input = $last;
-              foreach($input as $value) {
-                if(!empty($value)) {
+              foreach ($input as $value) {
+                if (!empty($value)) {
                   $has_value = TRUE;
                   break;
                 }
               }
-              // Skip this field if value exists
-              if($has_value) {
+              // Skip this field if value exists.
+              if ($has_value) {
                 continue;
               }
             }
           }
-          // Load new value
+          // Load new value.
           $items = field_get_items($referenced_entity_type, $referenced_entity, $field_name, $langcode);
-          if(!empty($items)) {
+          if (!empty($items)) {
             $field = $form_state['field'][$field_name][$langcode]['field'];
             $instance = $form_state['field'][$field_name][$langcode]['instance'];    
             $parents = $form['#parents'];
-            
-            // Replace field state with referenced values
+
+            // Replace field state with referenced values.
             $field_state = array(
               'field' => $field,
               'instance' => $instance,
@@ -230,15 +236,16 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
               'errors' => array(),
             );
             field_form_set_state($parents, $field_name, $langcode, $form_state, $field_state);
-            
-            // Replace field with new defaults
-            $form[$field_name] = reset(field_default_form($referenced_entity_type, $referenced_entity, $field, $instance, $langcode, $items, $form, $form_state));
-            
-            // Remove current input
+
+            // Replace field with new defaults.
+            $field_form = field_default_form($referenced_entity_type, $referenced_entity, $field, $instance, $langcode, $items, $form, $form_state);
+            $form[$field_name] = reset($field_form);
+
+            // Remove current input.
             unset($form_state['input'][$field_name]);
-            
-            // Set new value
-            if(!isset($field['#parents'])) {
+
+            // Set new value.
+            if (!isset($field['#parents'])) {
               $field['#parents'] = array($field_name);
             }
             form_set_value($field, $items, $form_state);
@@ -250,35 +257,35 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
 }
 
 /**
- *  Ajax callback: return prepopulated form
+ * Ajax callback: return prepopulated form.
  */
 function entityreference_autofill_form_autofill($form, $form_state) {
   return $form;
 }
 
 /**
- *  Return array of fields that have autofill enabled.
+ * Return array of fields that have autofill enabled.
  */ 
 function _entityreference_autofill_get_settings($reset = FALSE) {
-  // Use cached if available
-  if(!$reset) {
+  // Use cached if available.
+  if (!$reset) {
     $cache = cache_get(__FUNCTION__);
-    if(!empty($cache->data)) {
+    if (!empty($cache->data)) {
       return $cache->data;
     }
   }
-  // Rebuild settings 
+  // Rebuild settings.
   $field_map = field_info_field_map();
   $enabled_fields = array();
-  foreach($field_map as $field_name => $field) {
-    if($field['type'] !== 'entityreference') {
+  foreach ($field_map as $field_name => $field) {
+    if ($field['type'] !== 'entityreference') {
       continue;
     }
-    foreach($field['bundles'] as $entity_type => $bundles) {
-      foreach($bundles as $bundle) {
+    foreach ($field['bundles'] as $entity_type => $bundles) {
+      foreach ($bundles as $bundle) {
         $field_info = field_info_instance($entity_type, $field_name, $bundle);
         $field_widget = $field_info['widget'];
-        if($field_widget['type'] === 'entityreference_autocomplete' &&
+        if ($field_widget['type'] === 'entityreference_autocomplete' &&
           $field_widget['settings']['autofill']['enabled'])
         {
           $enabled_fields[$entity_type][$bundle][$field_name] = $field_widget['settings']['autofill'];
@@ -287,26 +294,25 @@ function _entityreference_autofill_get_settings($reset = FALSE) {
     }
   }
   cache_set(__FUNCTION__, $enabled_fields);
-  return $enabled_fields;  
+  return $enabled_fields;
 }
 
 /**
- *  #submit callback for field_ui_field_edit_form
- *  Reset cached autofill settings.
+ * #submit callback for field_ui_field_edit_form.
+ * Reset cached autofill settings.
  */
 function _entityreference_autofill_form_submit_reset_cache(&$form, &$form_state) {
-  // drupal_set_message(t('Autofill settings updated'));
   _entityreference_autofill_get_settings(TRUE);
 }
 
 /**
- *  #validate callback for field_ui_field_edit_form
- *  Clean up field array in widget settings.
+ * #validate callback for field_ui_field_edit_form.
+ * Clean up field array in widget settings.
  */
 function _entityreference_autofill_cleanup_options(&$form, &$form_state) {
   $widget_fields = &$form_state['values']['instance']['widget']['settings']['autofill']['fields'];
-  foreach($widget_fields as $field_name => $value) {
-    if(!$value) {
+  foreach ($widget_fields as $field_name => $value) {
+    if (!$value) {
       unset($widget_fields[$field_name]);
     };
   }
