@@ -1,8 +1,8 @@
 <?php
 /**
-* @file
-* Entity reference autofill module.
-*/
+ * @file
+ * Entity reference autofill module.
+ */
 
 
 /**
@@ -10,7 +10,7 @@
  */
 function entityreference_autofill_field_widget_info_alter(&$info) {
   // Add autofill settings to autocomplete widget.
-  // @TODO: Support for select / radio widgets
+  // @TODO: Support for select / radio widgets.
   $info['entityreference_autocomplete']['settings'] += array(
     'autofill' => array(
       'enabled' => 0,
@@ -109,7 +109,7 @@ function entityreference_autofill_form_field_ui_field_edit_form_alter(&$form, &$
     }
     array_unshift($form['#validate'], '_entityreference_autofill_cleanup_options');
 
-    // Add submission handler to rebuild cached autofill settings. 
+    // Add submission handler to rebuild cached autofill settings.
     $form['#submit'][] = '_entityreference_autofill_form_submit_reset_cache';
   }
   else {
@@ -299,17 +299,17 @@ function _entityreference_autofill_get_settings($reset = FALSE) {
 
 /**
  * #submit callback for field_ui_field_edit_form.
- * Reset cached autofill settings.
  */
 function _entityreference_autofill_form_submit_reset_cache(&$form, &$form_state) {
+  //Reset cached autofill settings.
   _entityreference_autofill_get_settings(TRUE);
 }
 
 /**
  * #validate callback for field_ui_field_edit_form.
- * Clean up field array in widget settings.
  */
 function _entityreference_autofill_cleanup_options(&$form, &$form_state) {
+  //Clean up field array in widget settings.
   $widget_fields = &$form_state['values']['instance']['widget']['settings']['autofill']['fields'];
   foreach ($widget_fields as $field_name => $value) {
     if (!$value) {
