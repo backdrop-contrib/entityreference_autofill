@@ -1,5 +1,5 @@
-name = Entity Reference Form Autofill
-description = Support for adding data to entity form fields from same-field instances in referenced entities.
+name = Entity reference autofill
+description = Auto-populate entity form fields with values from their referenced entities.
 core = 7.x
 package = Fields
 
