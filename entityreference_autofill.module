@@ -113,12 +113,11 @@ function entityreference_autofill_form_field_ui_field_edit_form_alter(&$form, &$
     $form['#submit'][] = '_entityreference_autofill_form_submit_reset_cache';
   }
   else {
-    $warning_text = t('There are no common fields between this bundle and its referenced' .
-                      'entities. To use autofill, you need to add instances of the same' .
-                      'fields to its referenced bundles');
+    $no_fields_found = t('There are no common fields between this bundle and its referenced entities.');
+    $usage_instructions = t('To use autofill, you need to add instances of the same fields to its referenced bundles.');
 
     $widget_form['autofill']['nofields'] = array(
-      '#markup' => '<div class="messages warning">' . $warning_text . '</div>',
+      '#markup' => '<div class="messages warning">' . $no_fields_found . $usage_instructions . '</div>',
       '#type' => 'item',
       '#states' => $enabled_states,
     );
@@ -148,7 +147,8 @@ function entityreference_autofill_field_widget_form_alter(&$element, &$form_stat
  * Implements hook_form_alter().
  */
 function entityreference_autofill_form_alter(&$form, &$form_state) {
-  // Is this condition enough for checking that we're working with an entity form?
+  // Is this condition enough for checking that we're
+  // working with an entity form?
   if (!isset($form['#entity_type'], $form['#bundle'])) {
     return;
   }
@@ -202,7 +202,8 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
       foreach ($autofill_fields as $field_name) {
         if (isset($form[$field_name])) {
           // Handle overwrite setting (Experimental).
-          // @TODO: Not sure how good this works, neither if there's a more efficient way to do it.
+          // @TODO: Not sure how good this works, neither if there's a more efficient
+          // way of doing it.
           if (!$overwrite) {
             $has_value = FALSE;
             // Working on 'input' array, as the raw post values are what we want to
