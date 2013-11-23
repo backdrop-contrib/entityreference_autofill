@@ -192,6 +192,11 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
       $referenced_entity_type = $reference_field['field']['settings']['target_type'];
       $referenced_target_id = drupal_array_get_nested_value($form_state['values'], $triggering_element['#parents']);
 
+      // No value, quit processing
+      if(empty($referenced_target_id)){
+        return;
+      }
+      
       // Load referenced entity.
       $referenced_entity = entity_load_single($referenced_entity_type, $referenced_target_id);
 
