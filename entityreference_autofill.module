@@ -288,8 +288,8 @@ function _entityreference_autofill_get_settings($reset = FALSE) {
         $field_info = field_info_instance($entity_type, $field_name, $bundle);
         $field_widget = $field_info['widget'];
         $is_ac_widget = $field_widget['type'] === 'entityreference_autocomplete';
-        $is_enabled = $field_widget['settings']['autofill']['enabled'];
-        if ($is_ac_widget && $is_enabled) {
+        $is_enabled = $is_ac_widget && $field_widget['settings']['autofill']['enabled'];
+        if ($is_enabled) {
           $enabled_fields[$entity_type][$bundle][$field_name] = $field_widget['settings']['autofill'];
         }
       }
