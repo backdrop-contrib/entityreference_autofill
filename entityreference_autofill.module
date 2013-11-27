@@ -53,7 +53,9 @@ function entityreference_autofill_form_field_ui_field_edit_form_alter(&$form, &$
   // Field target metadata.
   $field_map = field_info_field_map();
   $target_type = $form['#field']['settings']['target_type'];
-  $target_bundles = $form['#field']['settings']['handler_settings']['target_bundles'];
+
+  $target_bundles = isset($form['#field']['settings']['handler_settings']['target_bundles']);
+  $target_bundles = $target_bundles ? $form['#field']['settings']['handler_settings']['target_bundles'] : array();
 
   // Skip autofill for the reference field.
   unset($bundle_info[$instance['field_name']]);
@@ -192,11 +194,11 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
       $referenced_entity_type = $reference_field['field']['settings']['target_type'];
       $referenced_target_id = drupal_array_get_nested_value($form_state['values'], $triggering_element['#parents']);
 
-      // No value, quit processing
-      if(empty($referenced_target_id)){
+      // No value, quit processing.
+      if (empty($referenced_target_id)) {
         return;
       }
-      
+
       // Load referenced entity.
       $referenced_entity = entity_load_single($referenced_entity_type, $referenced_target_id);
 
