@@ -3,4 +3,5 @@ description = Auto-populate entity form fields with values from their referenced
 core = 7.x
 package = Fields
 
+dependencies[] = entity
 dependencies[] = entityreference
