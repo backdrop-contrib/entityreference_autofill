@@ -146,18 +146,11 @@ function entityreference_autofill_field_widget_form_alter(&$element, &$form_stat
 }
 
 /**
- * Implements hook_form_alter().
+ * Implements hook_field_attach_form().
  */
-function entityreference_autofill_form_alter(&$form, &$form_state) {
-  // Is this condition enough for checking that we're
-  // working with an entity form?
-  if (!isset($form['#entity_type'], $form['#bundle'])) {
-    return;
-  }
-
+function entityreference_autofill_field_attach_form($entity_type, $entity, &$form, &$form_state, $langcode) {
   // Get info about current entity.
-  $entity_type = $form['#entity_type'];
-  $bundle = $form['#bundle'];
+  list(, , $bundle) = entity_extract_ids($entity_type, $entity);
 
   // Get array of fields that have enabled autofill.
   $autofill_settings = _entityreference_autofill_get_settings();
@@ -171,99 +164,114 @@ function entityreference_autofill_form_alter(&$form, &$form_state) {
   $form['#prefix'] = '<div id="entityreference-autofill-form">';
   $form['#suffix'] = '</div>';
 
-  $form_state['entityreference_autofill_settings'] = $autofill_settings[$entity_type][$bundle];
-}
+  // Load settings from form_state.
+  $autofill_bundle_settings = $autofill_settings[$entity_type][$bundle];
 
-/**
- * Implements hook_field_attach_form().
- */
-function entityreference_autofill_field_attach_form($entity_type, $entity, &$form, &$form_state, $langcode) {
-  if (isset($form_state['entityreference_autofill_settings'], $form_state['triggering_element']['#ajax'])) {
+  if (isset($form_state['triggering_element']['#ajax'])) {
+    // If an AJAX-call triggered this request,
+    // use the triggering field's settings to autofill.
+    $reference_field_name = $form_state['triggering_element']['#field_name'];
 
-    $triggering_element = $form_state['triggering_element'];
-    $reference_field_name = $triggering_element['#field_name'];
-
-    // Get info about current entity.
-    $autofill_bundle_settings = $form_state['entityreference_autofill_settings'];
-
-    // Process autofill fields if enabled.
+    // Fill form with values from selected entity.
     if (!empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
-      $reference_field = $form_state['field'][$reference_field_name][$triggering_element['#language']];
-
-      // Reference entity metadata.
-      $referenced_entity_type = $reference_field['field']['settings']['target_type'];
-      $referenced_target_id = drupal_array_get_nested_value($form_state['values'], $triggering_element['#parents']);
-
-      // No value, quit processing.
-      if (empty($referenced_target_id)) {
-        return;
-      }
-
-      // Load referenced entity.
-      $referenced_entity = entity_load_single($referenced_entity_type, $referenced_target_id);
-
-      // Populate fields with values from referenced node.
-      // @TODO: Handle overwrite setting properly?
-      $autofill_fields = $autofill_bundle_settings[$reference_field_name]['fields'];
-      $overwrite = $autofill_bundle_settings[$reference_field_name]['overwrite'];
-      foreach ($autofill_fields as $field_name) {
-        if (isset($form[$field_name])) {
-          // Handle overwrite setting (Experimental).
-          // @TODO: Not sure how good this works, neither if there's a
-          // more efficient way of doing it.
-          if (!$overwrite) {
-            $has_value = FALSE;
-            // Working on 'input' array, as the raw post values are what we
-            // want to work against.
-            if (!empty($form_state['input'][$field_name])) {
-              $input = $form_state['input'][$field_name];
-              // Traverse to deepest level of input.
-              while (is_array($input)) {
-                $last = $input;
-                $input = reset($input);
-              }
-              $input = $last;
-              foreach ($input as $value) {
-                if (!empty($value)) {
-                  $has_value = TRUE;
-                  break;
-                }
-              }
-              // Skip this field if value exists.
-              if ($has_value) {
-                continue;
-              }
-            }
-          }
-          // Load new value.
-          $items = field_get_items($referenced_entity_type, $referenced_entity, $field_name, $langcode);
-          if (!empty($items)) {
-            $field = $form_state['field'][$field_name][$langcode]['field'];
-            $instance = $form_state['field'][$field_name][$langcode]['instance'];
-            $parents = $form['#parents'];
-
-            // Replace field state with referenced values.
-            $field_state = array(
-              'field' => $field,
-              'instance' => $instance,
-              'items_count' => count($items),
-              'array_parents' => array(),
-              'errors' => array(),
-            );
-            field_form_set_state($parents, $field_name, $langcode, $form_state, $field_state);
-
-            // Replace field with new defaults.
-            $field_form = field_default_form($referenced_entity_type, $referenced_entity, $field, $instance, $langcode, $items, $form, $form_state);
-            $form[$field_name] = reset($field_form);
-
-            // Unset current input to use new default values in form.
-            unset($form_state['input'][$field_name]);
-          }
+      $reference_field_parents = $form_state['triggering_element']['#parents'];
+      $referenced_target_id = drupal_array_get_nested_value($form_state['values'], $reference_field_parents);
+      entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_bundle_settings, $form, $form_state);
+    }
+  }
+  elseif (isset($form_state['entityreference_prepopulate'][$entity_type][$bundle])) {
+    // Find all prepopulated reference fields in current bundle.
+    foreach ($form_state['entityreference_prepopulate'][$entity_type][$bundle] as $reference_field_name => $values) {
+      // Fill form with values from selected entity.
+      if (!empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
+        // Fill for each referenced value (Better safe than sorry).
+        foreach ($values as $referenced_target_id) {
+          entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_bundle_settings, $form, $form_state);
         }
       }
     }
   }
 }
+
+/**
+ * Populate other form fields with respect to this module's field settings.
+ */
+function entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_bundle_settings, &$form, &$form_state) {
+
+  $reference_field = $form_state['field'][$reference_field_name][$langcode];
+
+  // Reference entity metadata.
+  $referenced_entity_type = $reference_field['field']['settings']['target_type'];
+
+  // No value, quit processing.
+  if (empty($referenced_target_id)) {
+    return;
+  }
+
+  // Load referenced entity.
+  $referenced_entity = entity_load_single($referenced_entity_type, $referenced_target_id);
+
+  // Populate fields with values from referenced node.
+  // @TODO: Handle overwrite setting properly?
+  $autofill_fields = $autofill_bundle_settings[$reference_field_name]['fields'];
+  $overwrite = $autofill_bundle_settings[$reference_field_name]['overwrite'];
+  foreach ($autofill_fields as $field_name) {
+    if (isset($form[$field_name])) {
+      // Handle overwrite setting (Experimental).
+      // @TODO: Not sure how good this works, neither if there's a
+      // more efficient way of doing it.
+      if (!$overwrite) {
+        $has_value = FALSE;
+        // Working on 'input' array, as the raw post values are what we
+        // want to work against.
+        if (!empty($form_state['input'][$field_name])) {
+          $input = $form_state['input'][$field_name];
+          // Traverse to deepest level of input.
+          while (is_array($input)) {
+            $last = $input;
+            $input = reset($input);
+          }
+          $input = $last;
+          foreach ($input as $value) {
+            if (!empty($value)) {
+              $has_value = TRUE;
+              break;
+            }
+          }
+          // Skip this field if value exists.
+          if ($has_value) {
+            continue;
+          }
+        }
+      }
+      // Load new value.
+      $items = field_get_items($referenced_entity_type, $referenced_entity, $field_name, $langcode);
+      if (!empty($items)) {
+        $field = $form_state['field'][$field_name][$langcode]['field'];
+        $instance = $form_state['field'][$field_name][$langcode]['instance'];
+        $parents = $form['#parents'];
+
+        // Replace field state with referenced values.
+        $field_state = array(
+          'field' => $field,
+          'instance' => $instance,
+          'items_count' => count($items),
+          'array_parents' => array(),
+          'errors' => array(),
+        );
+        field_form_set_state($parents, $field_name, $langcode, $form_state, $field_state);
+
+        // Replace field with new defaults.
+        $field_form = field_default_form($referenced_entity_type, $referenced_entity, $field, $instance, $langcode, $items, $form, $form_state);
+        $form[$field_name] = reset($field_form);
+
+        // Unset current input to use new default values in form.
+        unset($form_state['input'][$field_name]);
+      }
+    }
+  }
+}
+
 
 /**
  * Ajax callback: return prepopulated form.
@@ -298,6 +306,10 @@ function _entityreference_autofill_get_settings($reset = FALSE) {
         $is_enabled = $is_ac_widget && $field_widget['settings']['autofill']['enabled'];
         if ($is_enabled) {
           $enabled_fields[$entity_type][$bundle][$field_name] = $field_widget['settings']['autofill'];
+          // Entityreference prepopulate is enabled.
+          if (!empty($field_info['settings']['behaviors']['prepopulate']['status'])) {
+            $enabled_fields[$entity_type][$bundle][$field_name]['prepopulate'] = TRUE;
+          }
         }
       }
     }

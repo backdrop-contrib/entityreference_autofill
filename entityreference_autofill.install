@@ -1,0 +1,51 @@
+<?php
+
+/**
+ * @file
+ * Install and update functions for the Entity reference autofill module.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function entityreference_autofill_install() {
+  // Set weight for module.
+  entityreference_autofill_set_module_weight();
+}
+
+/**
+ * Implements hook_modules_enabled().
+ */
+function entityreference_autofill_modules_enabled($modules) {
+  if (in_array('entityreference_prepopulate', $modules)) {
+    // Update module weight to let prioritize prepopulate.
+    entityreference_autofill_set_module_weight();
+  }
+}
+
+/**
+ * Update module weight to give prepopulate priority.
+ */
+function entityreference_autofill_update_7000() {
+  entityreference_autofill_set_module_weight();
+}
+
+/**
+ * Relative module weight setter.
+ */
+function entityreference_autofill_set_module_weight() {
+  if (module_exists('entityreference_prepopulate')) {
+    // Get weight of entityreference_prepopulate.
+    $weight = db_select('system', 's')
+      ->fields('s', array('weight'))
+      ->condition('name', 'entityreference_prepopulate', '=')
+      ->execute()
+      ->fetchField();
+
+    // Set this module's weight one higher.
+    db_update('system')
+      ->fields(array('weight' => $weight + 1))
+      ->condition('name', 'entityreference_autofill', '=')
+      ->execute();
+  }
+}
