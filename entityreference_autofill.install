@@ -24,13 +24,6 @@ function entityreference_autofill_modules_enabled($modules) {
 }
 
 /**
- * Update module weight to give prepopulate priority.
- */
-function entityreference_autofill_update_7000() {
-  entityreference_autofill_set_module_weight();
-}
-
-/**
  * Relative module weight setter.
  */
 function entityreference_autofill_set_module_weight() {
@@ -48,4 +41,11 @@ function entityreference_autofill_set_module_weight() {
       ->condition('name', 'entityreference_autofill', '=')
       ->execute();
   }
+}
+
+/**
+ * Update module weight to give prepopulate priority.
+ */
+function entityreference_autofill_update_7000() {
+  entityreference_autofill_set_module_weight();
 }
