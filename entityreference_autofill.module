@@ -4,125 +4,22 @@
  * Entity reference autofill module.
  */
 
-
 /**
- * Implements hook_field_widget_info_alter().
+ * Implements hook_ctools_plugin_directory().
  */
-function entityreference_autofill_field_widget_info_alter(&$info) {
-  // Add autofill settings to autocomplete widget.
-  // @TODO: Support for select / radio widgets.
-  $info['entityreference_autocomplete']['settings'] += array(
-    'autofill' => array(
-      'enabled' => 0,
-      'fields' => array(),
-      'overwrite' => 1,
-    ),
-  );
+function entityreference_autofill_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'entityreference' || $module == 'ctools') {
+    return 'plugins/' . $plugin;
+  }
 }
 
 /**
- * Implements hook_element_form_FORM_ID_alter().
+ * Implements hook_field_update_instance().
  */
-function entityreference_autofill_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
-  $instance = $form['#instance'];
-  $widget = $instance['widget'];
-
-  if ($widget['type'] !== 'entityreference_autocomplete') {
-    return;
-  }
-  $settings = $instance['widget']['settings'];
-  $widget_form = &$form['instance']['widget']['settings'];
-
-  // Add module settings to widget form.
-  $widget_form['autofill'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Autofill settings'),
-  );
-  $widget_form['autofill']['enabled'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Enable autofill for this field'),
-    '#default_value' => $settings['autofill']['enabled'],
-    '#description' => t('Select if you want to autofill form fields with values from the entity referenced in this field.'),
-  );
-
-  // Load available fields from instance bundle.
-  $entity_type = $instance['entity_type'];
-  $bundle_name = $instance['bundle'];
-  $bundle_info = field_info_instances($entity_type, $bundle_name);
-
-  // Field target metadata.
-  $field_map = field_info_field_map();
-  $target_type = $form['#field']['settings']['target_type'];
-
-  $target_bundles = isset($form['#field']['settings']['handler_settings']['target_bundles']);
-  $target_bundles = $target_bundles ? $form['#field']['settings']['handler_settings']['target_bundles'] : array();
-
-  // Skip autofill for the reference field.
-  unset($bundle_info[$instance['field_name']]);
-
-  // Conditional display of sub-fields.
-  $enabled_states = array(
-    'visible' => array(
-      ':input[name="instance[widget][settings][autofill][enabled]"]' => array('checked' => TRUE),
-    ),
-  );
-
-  // Create checkboxes options for available fields.
-  $field_options = array();
-  foreach ($bundle_info as $field_name => $field_info) {
-    if (!empty($field_map[$field_name]['bundles'][$target_type])) {
-      $available_bundles = $field_map[$field_name]['bundles'][$target_type];
-      // Determine all targeted bundles that use this field.
-      $option_bundles = empty($target_bundles) ? $available_bundles : array_intersect($target_bundles, $available_bundles);
-      if (!empty($option_bundles)) {
-        $field_options[$field_name] = t(
-          '@field_label (@field_name): <em>Available in bundle(s) @bundles</em>',
-          array(
-            '@field_label' => $field_info['label'],
-            '@field_name' => $field_name,
-            '@bundles' => implode(', ', $option_bundles),
-          )
-        );
-      }
-    }
-  }
-
-  if (!empty($field_options)) {
-    $widget_form['autofill']['overwrite'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Overwrite existing data'),
-      '#default_value' => $settings['autofill']['overwrite'],
-      '#description' => t('Select if you want to overwrite fields that already have values. <br/><em><strong>NOTE:</strong> Disabling this is experimental and might not work 100%. If you experience issues with fields being overridden nonetheless, please report what field type and settings this occurs on in the modules issue queue on drupal.org</em>'),
-      '#states' => $enabled_states,
-    );
-    $widget_form['autofill']['fields'] = array(
-      '#type' => 'checkboxes',
-      '#title' => t('Fields'),
-      '#default_value' => $settings['autofill']['fields'],
-      '#options' => $field_options,
-      '#description' => t('Select which fields from the referenced entity you want to load on changing the value of this field.'),
-      '#states' => $enabled_states,
-    );
-
-    // Remove unset options from settings
-    // Is #validate preferred way to do this?
-    if (empty($form['#validate'])) {
-      $form['#validate'] = array();
-    }
-    array_unshift($form['#validate'], '_entityreference_autofill_cleanup_options');
-
-    // Add submission handler to rebuild cached autofill settings.
-    $form['#submit'][] = '_entityreference_autofill_form_submit_reset_cache';
-  }
-  else {
-    $no_fields_found = t('There are no common fields between this bundle and its referenced entities.');
-    $usage_instructions = t('To use autofill, you need to add instances of the same fields to its referenced bundles.');
-
-    $widget_form['autofill']['nofields'] = array(
-      '#markup' => '<div class="messages warning">' . $no_fields_found . $usage_instructions . '</div>',
-      '#type' => 'item',
-      '#states' => $enabled_states,
-    );
+function entityreference_autofill_field_update_instance($instance, $prior_instance) {
+  if (isset($instance['settings']['behaviors']['autofill'])) {
+    // Reset cached autofill settings.
+    _entityreference_autofill_get_settings(TRUE);
   }
 }
 
@@ -130,11 +27,7 @@ function entityreference_autofill_form_field_ui_field_edit_form_alter(&$form, &$
  * Implements hook_field_widget_form_alter().
  */
 function entityreference_autofill_field_widget_form_alter(&$element, &$form_state, $context) {
-  $is_entityreference = $context['field']['type'] == 'entityreference';
-  $is_ac_widget = $is_entityreference && ($context['instance']['widget']['type'] == 'entityreference_autocomplete');
-  $is_autofill = $is_ac_widget && $context['instance']['widget']['settings']['autofill']['enabled'];
-
-  if (!$is_autofill) {
+  if (empty($context['instance']['settings']['behaviors']['autofill']['status'])) {
     return;
   }
 
@@ -198,27 +91,6 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
  */
 function entityreference_autofill_form_autofill($form, $form_state) {
   return $form;
-}
-
-/**
- * Submission callback for field_ui_field_edit_form.
- */
-function _entityreference_autofill_form_submit_reset_cache(&$form, &$form_state) {
-  // Reset cached autofill settings on save.
-  _entityreference_autofill_get_settings(TRUE);
-}
-
-/**
- * Validation callback for field_ui_field_edit_form.
- */
-function _entityreference_autofill_cleanup_options(&$form, &$form_state) {
-  // Clean up field array in widget settings.
-  $widget_fields = &$form_state['values']['instance']['widget']['settings']['autofill']['fields'];
-  foreach ($widget_fields as $field_name => $value) {
-    if (!$value) {
-      unset($widget_fields[$field_name]);
-    };
-  }
 }
 
 /**
@@ -290,6 +162,18 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
 }
 
 /**
+ * List of widget types supported by this module.
+ *
+ * @return array
+ *   Array of widget machine names that this module supports.
+ */
+function _entityreference_autofill_supported_widgets() {
+  return array(
+    'entityreference_autocomplete',
+  );
+}
+
+/**
  * Recursive check if a field already has a set value (Experimental).
  *
  * @param string $field_input
@@ -325,12 +209,10 @@ function _entityreference_autofill_field_has_input_value($field_input) {
  *   Multidimensional map of entityreference fields,
  *   keyed by (in order) entity type, bundle and field name.
  *   A settings entry contains:
- *   - enabled: Boolean indicating that the field is enabled
- *     (redundant, disabled fields are not available in array).
  *   - overwrite: Boolean indicating if fields with values
  *     should be overwritten.
- *   - prepopulate: Available if the Entityreference prepopulate module
- *     enabled on this field.
+ *   - prepopulate: Available if the Entityreference prepopulate
+ *     module is enabled for this field.
  *   - fields: Map of fields that should be filled by the module.
  */
 function _entityreference_autofill_get_settings($reset = FALSE) {
@@ -351,14 +233,18 @@ function _entityreference_autofill_get_settings($reset = FALSE) {
     foreach ($field['bundles'] as $entity_type => $bundles) {
       foreach ($bundles as $bundle) {
         $field_info = field_info_instance($entity_type, $field_name, $bundle);
-        $field_widget = $field_info['widget'];
-        $is_ac_widget = $field_widget['type'] === 'entityreference_autocomplete';
-        $is_enabled = $is_ac_widget && $field_widget['settings']['autofill']['enabled'];
-        if ($is_enabled) {
-          $enabled_fields[$entity_type][$bundle][$field_name] = $field_widget['settings']['autofill'];
-          // Entityreference prepopulate is enabled.
-          if (!empty($field_info['settings']['behaviors']['prepopulate']['status'])) {
-            $enabled_fields[$entity_type][$bundle][$field_name]['prepopulate'] = TRUE;
+        if (isset($field_info['settings']['behaviors']['autofill'])) {
+          $module_settings = $field_info['settings']['behaviors']['autofill'];
+          if ($module_settings['status']) {
+            // Clear unused fields from field array.
+            $module_settings['fields'] = array_filter($module_settings['fields']);
+            $enabled_fields[$entity_type][$bundle][$field_name] = $module_settings;
+            // Reduntant, module is enabled if key exists.
+            unset($module_settings['status']);
+            // Entityreference prepopulate is enabled.
+            if (!empty($field_info['settings']['behaviors']['prepopulate']['status'])) {
+              $enabled_fields[$entity_type][$bundle][$field_name]['prepopulate'] = TRUE;
+            }
           }
         }
       }
