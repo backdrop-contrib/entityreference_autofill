@@ -194,7 +194,44 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
 }
 
 /**
+ * Ajax callback: return prepopulated form.
+ */
+function entityreference_autofill_form_autofill($form, $form_state) {
+  return $form;
+}
+
+/**
+ * Submission callback for field_ui_field_edit_form.
+ */
+function _entityreference_autofill_form_submit_reset_cache(&$form, &$form_state) {
+  // Reset cached autofill settings on save.
+  _entityreference_autofill_get_settings(TRUE);
+}
+
+/**
+ * Validation callback for field_ui_field_edit_form.
+ */
+function _entityreference_autofill_cleanup_options(&$form, &$form_state) {
+  // Clean up field array in widget settings.
+  $widget_fields = &$form_state['values']['instance']['widget']['settings']['autofill']['fields'];
+  foreach ($widget_fields as $field_name => $value) {
+    if (!$value) {
+      unset($widget_fields[$field_name]);
+    };
+  }
+}
+
+/**
  * Populate other form fields with respect to this module's field settings.
+ *
+ * @param int $referenced_target_id
+ *   id of referenced entity to fetch data from.
+ * @param string $reference_field_name
+ *   name of entity reference field triggering this call.
+ * @param string $langcode
+ *   current language.
+ * @param array $autofill_field_settings
+ *   module settings for $reference_field_name in current context.
  */
 function entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_field_settings, &$form, &$form_state) {
 
@@ -212,36 +249,16 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
   $referenced_entity = entity_load_single($referenced_entity_type, $referenced_target_id);
 
   // Populate fields with values from referenced node.
-  // @TODO: Handle overwrite setting properly?
   $autofill_fields = $autofill_field_settings['fields'];
   $overwrite = $autofill_field_settings['overwrite'];
   foreach ($autofill_fields as $field_name) {
     if (isset($form[$field_name])) {
-      // Handle overwrite setting (Experimental).
-      // @TODO: Not sure how good this works, neither if there's a
-      // more efficient way of doing it.
+      // Consider overwrite setting.
       if (!$overwrite) {
-        $has_value = FALSE;
-        // Working on 'input' array, as the raw post values are what we
-        // want to work against.
-        if (!empty($form_state['input'][$field_name])) {
-          $input = $form_state['input'][$field_name];
-          // Traverse to deepest level of input.
-          while (is_array($input)) {
-            $last = $input;
-            $input = reset($input);
-          }
-          $input = $last;
-          foreach ($input as $value) {
-            if (!empty($value)) {
-              $has_value = TRUE;
-              break;
-            }
-          }
-          // Skip this field if value exists.
-          if ($has_value) {
-            continue;
-          }
+        $field_parents = $form_state['field'][$field_name][$langcode]['array_parents'];
+        $field_input = drupal_array_get_nested_value($form_state['input'], $field_parents);
+        if (_entityreference_autofill_field_has_input_value($field_input)) {
+          continue;
         }
       }
       // Load new value.
@@ -272,16 +289,49 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
   }
 }
 
-
 /**
- * Ajax callback: return prepopulated form.
+ * Recursive check if a field already has a set value (Experimental).
+ *
+ * @param string $field_input
+ *   Array of field input values.
+ *
+ * @return bool
+ *   Wheter or not the field has a value set.
+ *
+ * @todo Not sure how good this works, neither if there's a
+ *   more efficient/clean way of doing it.
  */
-function entityreference_autofill_form_autofill($form, $form_state) {
-  return $form;
+function _entityreference_autofill_field_has_input_value($field_input) {
+  if (is_array($field_input)) {
+    foreach ($field_input as $value) {
+      if (_entityreference_autofill_field_has_input_value($value)) {
+        return TRUE;
+      }
+    }
+  }
+  else {
+    return !empty($field_input);
+  }
 }
 
 /**
- * Return array of fields that have autofill enabled.
+ * Get settings for fields that have autofill enabled.
+ *
+ * @param bool $reset
+ *   Boolean indicating if the settings should be generated or
+ *   fetched from cache.
+ *
+ * @return array
+ *   Multidimensional map of entityreference fields,
+ *   keyed by (in order) entity type, bundle and field name.
+ *   A settings entry contains:
+ *   - enabled: Boolean indicating that the field is enabled
+ *     (redundant, disabled fields are not available in array).
+ *   - overwrite: Boolean indicating if fields with values
+ *     should be overwritten.
+ *   - prepopulate: Available if the Entityreference prepopulate module
+ *     enabled on this field.
+ *   - fields: Map of fields that should be filled by the module.
  */
 function _entityreference_autofill_get_settings($reset = FALSE) {
   // Use cached if available.
@@ -316,25 +366,4 @@ function _entityreference_autofill_get_settings($reset = FALSE) {
   }
   cache_set(__FUNCTION__, $enabled_fields);
   return $enabled_fields;
-}
-
-/**
- * Submission callback for field_ui_field_edit_form.
- */
-function _entityreference_autofill_form_submit_reset_cache(&$form, &$form_state) {
-  // Reset cached autofill settings.
-  _entityreference_autofill_get_settings(TRUE);
-}
-
-/**
- * Validation callback for field_ui_field_edit_form.
- */
-function _entityreference_autofill_cleanup_options(&$form, &$form_state) {
-  // Clean up field array in widget settings.
-  $widget_fields = &$form_state['values']['instance']['widget']['settings']['autofill']['fields'];
-  foreach ($widget_fields as $field_name => $value) {
-    if (!$value) {
-      unset($widget_fields[$field_name]);
-    };
-  }
 }
