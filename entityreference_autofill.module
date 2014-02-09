@@ -31,19 +31,19 @@ function entityreference_autofill_field_widget_form_alter(&$element, &$form_stat
   // (Module only supports 1 value fields).
   $autofill_is_enabled = !empty($context['instance']['settings']['behaviors']['autofill']['status']);
   $add_callback = $autofill_is_enabled && ($context['field']['cardinality'] == 1);
-  if (!$add_callback) {
+  // Add AJAX callback to entity reference fields.
+  if ($add_callback) {
+    $widget_type = $context['instance']['widget']['type'];
+    // Get path to where in the element to put the AJAX callback.
+    $parents = _entityreference_autofill_supported_widgets($widget_type);
+    if (is_array($parents)) {
+      $ajax_parent = &drupal_array_get_nested_value($element, $parents);
+      // Add ajax callback to element.
+      $ajax_parent['#ajax'] = array(
+        'callback' => 'entityreference_autofill_form_autofill',
+      );
+    }
     return;
-  }
-  $widget_type = $context['instance']['widget']['type'];
-  // Get path to where in the element to put the AJAX callback.
-  $parents = _entityreference_autofill_supported_widgets($widget_type);
-  if (is_array($parents)) {
-    $ajax_parent = &drupal_array_get_nested_value($element, $parents);
-    // Add ajax callback to element.
-    $ajax_parent['#ajax'] = array(
-      'callback' => 'entityreference_autofill_form_autofill',
-      'wrapper' => 'entityreference-autofill-form',
-    );
   }
 }
 
@@ -62,10 +62,6 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
     return;
   }
 
-  // Add ajax wrapper around form.
-  $form['#prefix'] = '<div id="entityreference-autofill-form">';
-  $form['#suffix'] = '</div>';
-
   // Load settings from form_state.
   $autofill_bundle_settings = $autofill_settings[$entity_type][$bundle];
 
@@ -78,8 +74,9 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
     elseif (isset($form_state['triggering_element']['#name'])) {
       // Try to fetch the fields name part from #name key
       // (#field_name is not available for radio widget).
+      //
       // @todo Hacky solution, this (outer) condition should not be necessary,
-      //   other way to get triggering field name?
+      //   find other way to get triggering field name?
       if ($field_name_end_pos = strpos($form_state['triggering_element']['#name'], '[')) {
         $reference_field_name = substr($form_state['triggering_element']['#name'], 0, $field_name_end_pos);
       }
@@ -92,7 +89,8 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
       while (is_array($referenced_target_id)) {
         $referenced_target_id = isset($referenced_target_id['target_id']) ? $referenced_target_id['target_id'] : reset($referenced_target_id);
       }
-      entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_bundle_settings[$reference_field_name], $form, $form_state);
+
+      entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, LANGUAGE_NONE, $autofill_bundle_settings[$reference_field_name], $form, $form_state);
     }
   }
   // If Entityreference prepopulate is enabled, autofill from
@@ -113,13 +111,36 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
       }
     }
   }
+
+  // Add autofill wrappers to enabled fields.
+  foreach ($autofill_bundle_settings as $reference_field) {
+    foreach ($reference_field['fields'] as $field_name) {
+      unset($form_state['entityreference_autofill'][$field_name]);
+      $wrapper_id = drupal_html_id('entityreference-autofill-' . $field_name);
+      $form_state['entityreference_autofill'][$field_name] = $wrapper_id;
+      $form[$field_name]['#prefix'] = '<div id="' . $wrapper_id . '" class="entityreference-autofill-field">';
+      $form[$field_name]['#suffix'] = '</div>';
+    }
+  }
 }
 
 /**
- * Ajax callback: return prepopulated form.
+ * AJAX callback for entity selection.
+ *
+ * @return array
+ *   Array of AJAX replace commands for relevant fields.
  */
 function entityreference_autofill_form_autofill($form, $form_state) {
-  return $form;
+  if (!isset($form_state['entityreference_autofill']['#commands'])) {
+    return;
+  }
+  $commands = array();
+  foreach ($form_state['entityreference_autofill']['#commands'] as $field_name => $wrapper_id) {
+    $commands[] = ajax_command_replace('#' . $wrapper_id, drupal_render($form[$field_name]));
+  }
+  // Commands are spent, unset.
+  unset($form_state['entityreference_autofill']['#commands']);
+  return array('#type' => 'ajax', '#commands' => $commands);
 }
 
 /**
@@ -162,12 +183,18 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
           continue;
         }
       }
+
       // Load new value.
       $items = field_get_items($referenced_entity_type, $referenced_entity, $field_name, $langcode);
       if (!empty($items)) {
         $field = $form_state['field'][$field_name][$langcode]['field'];
         $instance = $form_state['field'][$field_name][$langcode]['instance'];
         $parents = $form['#parents'];
+
+        // Add callback info if AJAX.
+        if (isset($form_state['triggering_element']['#ajax'])) {
+          $form_state['entityreference_autofill']['#commands'][$field_name] = $form_state['entityreference_autofill'][$field_name];
+        }
 
         // Replace field state with referenced values.
         $field_state = array(
@@ -261,40 +288,45 @@ function _entityreference_autofill_field_has_input_value($field_input) {
  *   - fields: Map of fields that should be filled by the module.
  */
 function _entityreference_autofill_get_settings($reset = FALSE) {
-  // Use cached if available.
-  if (!$reset) {
+  // Use cached if available
+  // (Static is superfluous for now).
+  $settings = &drupal_static(__FUNCTION__);
+  if (!isset($settings) && !$reset) {
     $cache = cache_get(__FUNCTION__);
     if (!empty($cache->data)) {
-      return $cache->data;
+      $settings = $cache->data;
     }
   }
   // Rebuild settings.
-  $field_map = field_info_field_map();
-  $enabled_fields = array();
-  foreach ($field_map as $field_name => $field) {
-    if ($field['type'] !== 'entityreference') {
-      continue;
-    }
-    foreach ($field['bundles'] as $entity_type => $bundles) {
-      foreach ($bundles as $bundle) {
-        $field_info = field_info_instance($entity_type, $field_name, $bundle);
-        if (isset($field_info['settings']['behaviors']['autofill'])) {
-          $module_settings = $field_info['settings']['behaviors']['autofill'];
-          if ($module_settings['status']) {
-            // Clear unused fields from field array.
-            $module_settings['fields'] = array_filter($module_settings['fields']);
-            $enabled_fields[$entity_type][$bundle][$field_name] = $module_settings;
-            // Reduntant, module is enabled if key exists.
-            unset($module_settings['status']);
-            // Entityreference prepopulate is enabled.
-            if (!empty($field_info['settings']['behaviors']['prepopulate']['status'])) {
-              $enabled_fields[$entity_type][$bundle][$field_name]['prepopulate'] = TRUE;
+  if (!isset($settings) || $reset) {
+    $field_map = field_info_field_map();
+    $enabled_fields = array();
+    foreach ($field_map as $field_name => $field) {
+      if ($field['type'] !== 'entityreference') {
+        continue;
+      }
+      foreach ($field['bundles'] as $entity_type => $bundles) {
+        foreach ($bundles as $bundle) {
+          $field_info = field_info_instance($entity_type, $field_name, $bundle);
+          if (isset($field_info['settings']['behaviors']['autofill'])) {
+            $module_settings = $field_info['settings']['behaviors']['autofill'];
+            if ($module_settings['status']) {
+              // Clear unused fields from field array.
+              $module_settings['fields'] = array_filter($module_settings['fields']);
+              $enabled_fields[$entity_type][$bundle][$field_name] = $module_settings;
+              // Reduntant, module is enabled if key exists.
+              unset($module_settings['status']);
+              // Entityreference prepopulate is enabled.
+              if (!empty($field_info['settings']['behaviors']['prepopulate']['status'])) {
+                $enabled_fields[$entity_type][$bundle][$field_name]['prepopulate'] = TRUE;
+              }
             }
           }
         }
       }
     }
+    cache_set(__FUNCTION__, $enabled_fields);
+    $settings = $enabled_fields;
   }
-  cache_set(__FUNCTION__, $enabled_fields);
-  return $enabled_fields;
+  return $settings;
 }
