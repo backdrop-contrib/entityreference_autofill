@@ -27,15 +27,24 @@ function entityreference_autofill_field_update_instance($instance, $prior_instan
  * Implements hook_field_widget_form_alter().
  */
 function entityreference_autofill_field_widget_form_alter(&$element, &$form_state, $context) {
-  if (empty($context['instance']['settings']['behaviors']['autofill']['status'])) {
+  // Check that autofill is enabled and cardinality is 1 for field
+  // (Module only supports 1 value fields).
+  $autofill_is_enabled = !empty($context['instance']['settings']['behaviors']['autofill']['status']);
+  $add_callback = $autofill_is_enabled && ($context['field']['cardinality'] == 1);
+  if (!$add_callback) {
     return;
   }
-
-  // Add ajax callback to element.
-  $element['target_id']['#ajax'] = array(
-    'callback' => 'entityreference_autofill_form_autofill',
-    'wrapper' => 'entityreference-autofill-form',
-  );
+  $widget_type = $context['instance']['widget']['type'];
+  // Get path to where in the element to put the AJAX callback.
+  $parents = _entityreference_autofill_supported_widgets($widget_type);
+  if (is_array($parents)) {
+    $ajax_parent = &drupal_array_get_nested_value($element, $parents);
+    // Add ajax callback to element.
+    $ajax_parent['#ajax'] = array(
+      'callback' => 'entityreference_autofill_form_autofill',
+      'wrapper' => 'entityreference-autofill-form',
+    );
+  }
 }
 
 /**
@@ -60,18 +69,38 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
   // Load settings from form_state.
   $autofill_bundle_settings = $autofill_settings[$entity_type][$bundle];
 
+  // If an AJAX-call triggered this request,
+  // use the triggering field's settings to autofill.
   if (isset($form_state['triggering_element']['#ajax'])) {
-    // If an AJAX-call triggered this request,
-    // use the triggering field's settings to autofill.
-    $reference_field_name = $form_state['triggering_element']['#field_name'];
-
+    if (isset($form_state['triggering_element']['#field_name'])) {
+      $reference_field_name = $form_state['triggering_element']['#field_name'];
+    }
+    elseif (isset($form_state['triggering_element']['#name'])) {
+      // Try to fetch the fields name part from #name key
+      // (#field_name is not available for radio widget).
+      // @todo Hacky solution, this (outer) condition should not be necessary,
+      //   other way to get triggering field name?
+      if ($field_name_end_pos = strpos($form_state['triggering_element']['#name'], '[')) {
+        $reference_field_name = substr($form_state['triggering_element']['#name'], 0, $field_name_end_pos);
+      }
+    }
     // Fill form with values from selected entity.
     if (!empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
       $reference_field_parents = $form_state['triggering_element']['#parents'];
       $referenced_target_id = drupal_array_get_nested_value($form_state['values'], $reference_field_parents);
+      // Feeble attempt to support arbitrary widgets.
+      while (is_array($referenced_target_id)) {
+        $referenced_target_id = isset($referenced_target_id['target_id']) ? $referenced_target_id['target_id'] : reset($referenced_target_id);
+      }
       entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_bundle_settings[$reference_field_name], $form, $form_state);
     }
   }
+  // If Entityreference prepopulate is enabled, autofill from
+  // prepopulated field.
+  //
+  // @todo: Remove prepopulate conditions, instead check if form
+  // value is set and fill accordingly (This would enable
+  // default field values to be considered too).
   elseif (isset($form_state['entityreference_prepopulate'][$entity_type][$bundle])) {
     // Find all prepopulated reference fields in current bundle.
     foreach ($form_state['entityreference_prepopulate'][$entity_type][$bundle] as $reference_field_name => $values) {
@@ -113,7 +142,7 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
   $referenced_entity_type = $reference_field['field']['settings']['target_type'];
 
   // No value, quit processing.
-  if (empty($referenced_target_id)) {
+  if (!is_numeric($referenced_target_id)) {
     return;
   }
 
@@ -162,15 +191,31 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
 }
 
 /**
- * List of widget types supported by this module.
+ * Widget form array paths keyed by widget type.
+ *
+ * This function defines which widgets are supported by the
+ * module (by array keys). The values are the path in the
+ * widget element where the AJAX callback is attached.
+ *
+ * @param string $widget_type
+ *   (optional) Widget type to get ajax base path for.
  *
  * @return array
- *   Array of widget machine names that this module supports.
+ *   Array of widget machine names that this module support,
+ *   or ajax base path if $widget_type is set.
+ *
+ * @see entityreference_autofill_field_widget_form_alter()
  */
-function _entityreference_autofill_supported_widgets() {
-  return array(
-    'entityreference_autocomplete',
+function _entityreference_autofill_supported_widgets($widget_type = FALSE) {
+  $supported_widgets = array(
+    'entityreference_autocomplete' => array('target_id'),
+    'options_select' => array(),
+    'options_buttons' => array(),
   );
+  if ($widget_type) {
+    return isset($supported_widgets[$widget_type]) ? $supported_widgets[$widget_type] : FALSE;
+  }
+  return $supported_widgets;
 }
 
 /**

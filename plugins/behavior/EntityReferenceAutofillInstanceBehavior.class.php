@@ -84,7 +84,8 @@ class EntityReferenceAutofillInstanceBehavior extends EntityReference_BehaviorHa
    * Only show handler on supported widget types.
    */
   public function access($field, $instance) {
-    return in_array($instance['widget']['type'], _entityreference_autofill_supported_widgets());
+    $is_single_value = $field['cardinality'] == 1;
+    $is_supported = $is_single_value && array_key_exists($instance['widget']['type'], _entityreference_autofill_supported_widgets());
+    return $is_supported;
   }
-
 }
