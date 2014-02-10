@@ -95,10 +95,6 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
   }
   // If Entityreference prepopulate is enabled, autofill from
   // prepopulated field.
-  //
-  // @todo: Remove prepopulate conditions, instead check if form
-  // value is set and fill accordingly (This would enable
-  // default field values to be considered too).
   elseif (isset($form_state['entityreference_prepopulate'][$entity_type][$bundle])) {
     // Find all prepopulated reference fields in current bundle.
     foreach ($form_state['entityreference_prepopulate'][$entity_type][$bundle] as $reference_field_name => $values) {
