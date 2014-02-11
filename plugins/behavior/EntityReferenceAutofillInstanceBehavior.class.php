@@ -8,7 +8,7 @@
  * Class for handling module behavior.
  */
 class EntityReferenceAutofillInstanceBehavior extends EntityReference_BehaviorHandler_Abstract {
-
+  
   /**
    * Generate a settings form for this handler.
    */
@@ -56,13 +56,6 @@ class EntityReferenceAutofillInstanceBehavior extends EntityReference_BehaviorHa
       '#type' => 'checkbox',
       '#title' => t('Overwrite existing data'),
       '#description' => t('Select if you want to overwrite fields that already have values. <br/><em><strong>NOTE:</strong> Disabling this is experimental and might not work 100%. If you experience issues with fields being overridden nonetheless, please report what field type and settings this occurs on in the modules issue queue on drupal.org</em>'),
-    );
-
-    $form['template'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Use for templates <em>(NOT YET IMPLEMENTED)</em>'),
-      '#disabled' => TRUE,
-      '#description' => t('Select if you want to use the field as a template selection field. The field will only be available on the creation form (neither available for display), and no data will be saved to the database.'),
     );
 
     if (empty($field_options)) {
