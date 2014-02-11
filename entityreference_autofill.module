@@ -97,7 +97,7 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
   // @todo is this condition sound?
   elseif (empty($form_state['input'])) {
     // Find all prepopulated reference fields in current bundle.
-    foreach ($autofill_bundle_settings as $reference_field_name => $settings) {
+    foreach (array_keys($autofill_bundle_settings) as $reference_field_name) {
       // Check if field has default value.
       $field = $form_state['field'][$reference_field_name][$langcode]['field'];
       $instance = $form_state['field'][$reference_field_name][$langcode]['instance'];
@@ -106,20 +106,6 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
       if (isset($default_value[0]['target_id'])) {
         $referenced_target_id = $default_value[0]['target_id'];
         entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_bundle_settings[$reference_field_name], $entity_type, $bundle, $form, $form_state);
-      }
-    }
-  }
-  // If Entityreference prepopulate is enabled, autofill from
-  // prepopulated field.
-  elseif (isset($form_state['entityreference_prepopulate'][$entity_type][$bundle])) {
-    // Find all prepopulated reference fields in current bundle.
-    foreach ($form_state['entityreference_prepopulate'][$entity_type][$bundle] as $reference_field_name => $values) {
-      // Fill form with values from selected entity.
-      if (!empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
-        // Fill for each referenced value (Better safe than sorry).
-        foreach ($values as $referenced_target_id) {
-          entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_bundle_settings[$reference_field_name], $entity_type, $bundle, $form, $form_state);
-        }
       }
     }
   }

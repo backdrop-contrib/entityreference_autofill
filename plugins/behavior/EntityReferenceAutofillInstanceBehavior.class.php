@@ -8,7 +8,7 @@
  * Class for handling module behavior.
  */
 class EntityReferenceAutofillInstanceBehavior extends EntityReference_BehaviorHandler_Abstract {
-  
+
   /**
    * Generate a settings form for this handler.
    */
@@ -88,14 +88,5 @@ class EntityReferenceAutofillInstanceBehavior extends EntityReference_BehaviorHa
     $is_supported = $is_single_value && array_key_exists($instance['widget']['type'], _entityreference_autofill_supported_widgets());
     return $is_supported;
   }
-  
-  /**
-   * Do not save data for template fields.
-   */
-  public function presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
-    $is_template_field = !empty($instance['settings']['behaviors']['autofill']['template']);
-    if($is_template_field) {
-      
-    }
-  }
+
 }
