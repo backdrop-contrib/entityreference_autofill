@@ -156,8 +156,16 @@ function entityreference_autofill_form_autofill($form, $form_state) {
  *   current language.
  * @param array $autofill_field_settings
  *   module settings for $reference_field_name in current context.
+ * @param string $entity_type
+ *   the entity type of the referencing form.
+ * @param string $bundle
+ *   the bundle of the referencing form
+ * @param string $form
+ *   the $form array.
+ * @param string $form_state
+ *   the $form_state array.
  */
-function entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_field_settings, $entity_type, $bundle, &$form, &$form_state, $set_state = FALSE) {
+function entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_field_settings, $entity_type, $bundle, &$form, &$form_state) {
 
   $reference_field = $form_state['field'][$reference_field_name][$langcode];
 
@@ -192,11 +200,24 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
       // Load new value.
       $items = field_get_items($referenced_entity_type, $referenced_entity, $field_name, $langcode);
       if (!empty($items)) {
-        $field = $form_state['field'][$field_name][$langcode]['field'];
-        $instance = $form_state['field'][$field_name][$langcode]['instance'];
-
         // Add callback info if AJAX.
         $form_state['entityreference_autofill'][$entity_type][$bundle][$field_name] = _entityreference_autofill_get_wrapper($entity_type, $bundle, $field_name);
+
+        // Allow other modules interact with $form_state prior to
+        // generating this field's form.
+        // @see entityreference_autofill.api.php
+        $context = array(
+          'field_name' => $field_name,
+          'field_type' => $form_state['field'][$field_name][$langcode]['field']['type'],
+          'items' => $items,
+          'langcode' => $langcode,
+          'reference_field_name' => $reference_field_name,
+        );
+        drupal_alter('entityreference_autofill_fill_items', $form_state, $context);
+
+        // Field information for rendering form.
+        $field = $form_state['field'][$field_name][$langcode]['field'];
+        $instance = $form_state['field'][$field_name][$langcode]['instance'];
 
         // Replace field with new defaults.
         $field_form = field_default_form($referenced_entity_type, $referenced_entity, $field, $instance, $langcode, $items, $form, $form_state);
