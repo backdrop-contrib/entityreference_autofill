@@ -47,3 +47,18 @@ function hook_entityreference_autofill_fill_items_alter(&$form_state, $context) 
 
   }
 }
+
+/**
+ * Alter the ajax commands returned on entity selection.
+ *
+ * @param array &$commands
+ *   Array of ajax replace commands to return.
+ * @param array $context
+ *   Form context variables.
+ *   - form: The entity form array.
+ *   - form_state: Current state of the entity form.
+ */
+function hook_entityreference_autofill_ajax_commands_alter(&$commands, $context) {
+  // Add "ajax-changed" class to body tag.
+  $commands[] = ajax_command_changed('body');
+}

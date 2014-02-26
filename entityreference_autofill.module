@@ -103,6 +103,8 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
       // @see https://drupal.org/node/2205245
       if (empty($langcode)) {
         $language = isset($form[$reference_field_name]['#language']) ? $form[$reference_field_name]['#language'] : LANGUAGE_NONE;
+      } else {
+        $language = $langcode;
       }
       // Check if field has default value.
       $field = $form_state['field'][$reference_field_name][$language]['field'];
@@ -148,6 +150,16 @@ function entityreference_autofill_form_autofill($form, $form_state) {
   foreach ($form_state['entityreference_autofill'][$entity_type][$bundle] as $field_name => $wrapper_id) {
     $commands[] = ajax_command_replace('#' . $wrapper_id, drupal_render($form[$field_name]));
   }
+  // Allow other modules to add additional
+  // ajax commands to return on an autofill
+  // callback.
+  // @see entityreference_autofill.api.php
+  $context = array(
+    'form' => $form,
+    'form_state' => $form_state,
+  );
+  drupal_alter('entityreference_autofill_ajax_commands', $commands, $context);
+
   return array('#type' => 'ajax', '#commands' => $commands);
 }
 
@@ -174,6 +186,7 @@ function entityreference_autofill_form_autofill($form, $form_state) {
 function entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_field_settings, $entity_type, $bundle, &$form, &$form_state) {
   // Language fail-safe. Use field language or
   // undefined if provided $langcode is empty.
+  // @todo Should this be done per form field if langcode is empty?
   // @see https://drupal.org/node/2205245
   if (empty($langcode)) {
     $langcode = isset($form[$reference_field_name]['#language']) ? $form[$reference_field_name]['#language'] : LANGUAGE_NONE;
@@ -215,7 +228,7 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
         // Add callback info if AJAX.
         $form_state['entityreference_autofill'][$entity_type][$bundle][$field_name] = _entityreference_autofill_get_wrapper($entity_type, $bundle, $field_name);
 
-        // Allow other modules interact with $form_state prior to
+        // Let other modules interact with $form_state prior to
         // generating this field's form.
         // @see entityreference_autofill.api.php
         $context = array(
