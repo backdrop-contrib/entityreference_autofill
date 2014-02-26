@@ -98,14 +98,20 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
   elseif (empty($form_state['input'])) {
     // Find all prepopulated reference fields in current bundle.
     foreach (array_keys($autofill_bundle_settings) as $reference_field_name) {
+      // Language fail-safe. Use field language or
+      // undefined if provided $langcode is empty.
+      // @see https://drupal.org/node/2205245
+      if (empty($langcode)) {
+        $language = isset($form[$reference_field_name]['#language']) ? $form[$reference_field_name]['#language'] : LANGUAGE_NONE;
+      }
       // Check if field has default value.
-      $field = $form_state['field'][$reference_field_name][$langcode]['field'];
-      $instance = $form_state['field'][$reference_field_name][$langcode]['instance'];
-      $default_value = field_get_default_value($entity_type, $entity, $field, $instance, $langcode);
+      $field = $form_state['field'][$reference_field_name][$language]['field'];
+      $instance = $form_state['field'][$reference_field_name][$language]['instance'];
+      $default_value = field_get_default_value($entity_type, $entity, $field, $instance, $language);
       // Fill form with referenced values.
       if (isset($default_value[0]['target_id'])) {
         $referenced_target_id = $default_value[0]['target_id'];
-        entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_bundle_settings[$reference_field_name], $entity_type, $bundle, $form, $form_state);
+        entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $language, $autofill_bundle_settings[$reference_field_name], $entity_type, $bundle, $form, $form_state);
       }
     }
   }
@@ -166,6 +172,12 @@ function entityreference_autofill_form_autofill($form, $form_state) {
  *   the $form_state array.
  */
 function entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_field_settings, $entity_type, $bundle, &$form, &$form_state) {
+  // Language fail-safe. Use field language or
+  // undefined if provided $langcode is empty.
+  // @see https://drupal.org/node/2205245
+  if (empty($langcode)) {
+    $langcode = isset($form[$reference_field_name]['#language']) ? $form[$reference_field_name]['#language'] : LANGUAGE_NONE;
+  }
 
   $reference_field = $form_state['field'][$reference_field_name][$langcode];
 
