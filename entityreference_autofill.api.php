@@ -6,6 +6,25 @@
  */
 
 /**
+ * Add support for other widgets.
+ *
+ * @return array
+ *  Array of element parents that specify where to attach the AJAX callback,
+ *  keyed by widget type.
+ *
+ * @see entityreference_autofill_supported_widgets()
+ */
+function hook_entityreference_autofill_supported_widgets() {
+  // Add support for organic groups widget.
+  // By setting value to NULL, no ajax wrapper will be
+  // added to the field itself, but both group and
+  // admin selection fields will be autofill-enabled.
+  return array(
+    'og_complex' => NULL,
+  );
+}
+ 
+/**
  * Alter the form state before rendering an autofill field.
  *
  * @param array &$form_state
@@ -61,4 +80,59 @@ function hook_entityreference_autofill_fill_items_alter(&$form_state, $context) 
 function hook_entityreference_autofill_ajax_commands_alter(&$commands, $context) {
   // Add "ajax-changed" class to body tag.
   $commands[] = ajax_command_changed('body');
+}
+
+/**
+ * Remove ajax from entityreference autofill enabled field(s).
+ *
+ * @param $field_name
+ *   The name of the field.
+ * @param $element
+ *   The field widget form element as constructed by hook_field_widget_form().
+ * @param $context
+ *   An associative array containing the following key-value pairs, matching the
+ *   arguments received by hook_field_widget_form():
+ *   - form: The form structure to which widgets are being attached. This may be
+ *     a full form structure, or a sub-element of a larger form.
+ *   - field: The field structure.
+ *   - instance: The field instance structure.
+ *   - langcode: The language associated with $items.
+ *   - items: Array of default values for this field.
+ *   - delta: The order of this item in the array of subelements (0, 1, 2, etc).
+ *
+ * @return boolean
+ *   return FALSE for fields you do not want to be AJAX enabled.
+ */
+function hook_entityreference_autofill_detach_ajax($field_name, $element, $context) {
+  // Do not attach AJAX callback to OG admin fields.
+  if (og_is_group_audience_field($field_name)) {
+    if (isset($context['instance']['field_mode']) && $context['instance']['field_mode'] == 'admin') {
+      return FALSE;
+    }
+  }
+}
+
+/**
+ * Alter target id to fetch referenced values from.
+ *
+ * @param &$target_id
+ *   Current target id as determined by entityreference_autofill_field_attach_form().
+ * @param &$form_state
+ *   The current $form_state array.
+ * @param $context
+ *   An associative array containing the following key-value pairs:
+ *   - field_name: The name of the reference field.
+ *   - widget_type: The widget type of the reference field.
+ *   - field: The reference field structure.
+ *   - instance: The field's instance structure.
+ *   - form: Current form array.
+ *   - form_state: 
+ *   - langcode: The current langcode.
+ */
+function hook_entityreference_autofill_target_id_alter(&$target_id, &$form_state, $context) {
+  // Fetch value from form input array instead of values.
+  if (og_is_group_audience_field($context['field_name'])) {
+    $reference_field_parents = $form_state['triggering_element']['#parents'];
+    $referenced_target_id = drupal_array_get_nested_value($form_state['input'], $reference_field_parents);
+  }
 }

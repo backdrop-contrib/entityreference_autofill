@@ -31,12 +31,22 @@ function entityreference_autofill_field_widget_form_alter(&$element, &$form_stat
   // (Module only supports 1 value fields).
   $autofill_is_enabled = !empty($context['instance']['settings']['behaviors']['autofill']['status']);
   $add_ajax_callback = $autofill_is_enabled && ($context['field']['cardinality'] == 1);
+
   // Add AJAX callback to entity reference fields.
   if ($add_ajax_callback) {
+
     $widget_type = $context['instance']['widget']['type'];
     // Get path to where in the element to put the AJAX callback.
     $parents = _entityreference_autofill_supported_widgets($widget_type);
     if (is_array($parents)) {
+
+      // Other modules can disable ajax for fields at their own peril.
+      $is_allowed = module_invoke_all('entityreference_autofill_detach_ajax', $context['field']['field_name'], $element, $context);
+      // Skip field if (strict) FALSE is returned by any module.
+      if (in_array(FALSE, $is_allowed, TRUE)) {
+        return;
+      }
+
       $ajax_parent = &drupal_array_get_nested_value($element, $parents);
       // Add ajax callback to element.
       $ajax_parent['#ajax'] = array(
@@ -83,9 +93,24 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
     }
     // Fill form with values from selected entity.
     if (!empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
+
       $reference_field_parents = $form_state['triggering_element']['#parents'];
       $referenced_target_id = drupal_array_get_nested_value($form_state['values'], $reference_field_parents);
+
+      // For third-party widgets, reference target id might have to be fetched
+      // from someplace else. Alter hook for module-specific customization.
+      $context = array(
+        'field_name' => $reference_field_name,
+        'widget_type' => $form_state['field'][$reference_field_name][$langcode]['instance']['widget']['type'],
+        'field' => $form_state['field'][$reference_field_name][$langcode]['field'],
+        'instance' => $form_state['field'][$reference_field_name][$langcode]['instance'],
+        'form' => $form,
+        'langcode' => $langcode,
+      );
+      drupal_alter('entityreference_autofill_target_id', $referenced_target_id, $form_state, $context);
+
       // Feeble attempt to support arbitrary widgets.
+      // (For radio support).
       while (is_array($referenced_target_id)) {
         $referenced_target_id = isset($referenced_target_id['target_id']) ? $referenced_target_id['target_id'] : reset($referenced_target_id);
       }
@@ -103,7 +128,8 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
       // @see https://drupal.org/node/2205245
       if (empty($langcode)) {
         $language = isset($form[$reference_field_name]['#language']) ? $form[$reference_field_name]['#language'] : LANGUAGE_NONE;
-      } else {
+      }
+      else {
         $language = $langcode;
       }
       // Check if field has default value.
@@ -132,7 +158,7 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
  * AJAX callback for entity selection.
  *
  * @return array
- *   Array of AJAX replace commands for relevant fields.
+ *   Array of AJAX commands.
  */
 function entityreference_autofill_form_autofill($form, $form_state) {
   // Need entity type to continue.
@@ -294,6 +320,11 @@ function _entityreference_autofill_supported_widgets($widget_type = FALSE) {
     'options_select' => array(),
     'options_buttons' => array(),
   );
+
+  // Allow other modules to add other widgets support.
+  $additional_widgets = module_invoke_all('entityreference_autofill_supported_widgets');
+  $supported_widgets += $additional_widgets;
+
   if ($widget_type) {
     return isset($supported_widgets[$widget_type]) ? $supported_widgets[$widget_type] : FALSE;
   }
