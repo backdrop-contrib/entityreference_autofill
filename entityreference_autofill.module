@@ -101,9 +101,7 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
       // from someplace else. Alter hook for module-specific customization.
       $context = array(
         'field_name' => $reference_field_name,
-        'widget_type' => $form_state['field'][$reference_field_name][$langcode]['instance']['widget']['type'],
-        'field' => $form_state['field'][$reference_field_name][$langcode]['field'],
-        'instance' => $form_state['field'][$reference_field_name][$langcode]['instance'],
+        'field' => $form_state['field'][$reference_field_name],
         'form' => $form,
         'langcode' => $langcode,
       );
@@ -123,23 +121,15 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
   elseif (empty($form_state['input'])) {
     // Find all prepopulated reference fields in current bundle.
     foreach (array_keys($autofill_bundle_settings) as $reference_field_name) {
-      // Language fail-safe. Use field language or
-      // undefined if provided $langcode is empty.
-      // @see https://drupal.org/node/2205245
-      if (empty($langcode)) {
-        $language = isset($form[$reference_field_name]['#language']) ? $form[$reference_field_name]['#language'] : LANGUAGE_NONE;
-      }
-      else {
-        $language = $langcode;
-      }
       // Check if field has default value.
+      $language = field_language($entity_type, $entity, $reference_field_name, $langcode);
       $field = $form_state['field'][$reference_field_name][$language]['field'];
       $instance = $form_state['field'][$reference_field_name][$language]['instance'];
       $default_value = field_get_default_value($entity_type, $entity, $field, $instance, $language);
       // Fill form with referenced values.
       if (isset($default_value[0]['target_id'])) {
         $referenced_target_id = $default_value[0]['target_id'];
-        entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $language, $autofill_bundle_settings[$reference_field_name], $entity_type, $bundle, $form, $form_state);
+        entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_bundle_settings[$reference_field_name], $entity_type, $bundle, $form, $form_state);
       }
     }
   }
@@ -210,15 +200,8 @@ function entityreference_autofill_form_autofill($form, $form_state) {
  *   the $form_state array.
  */
 function entityreference_autofill_populate_form_by_field($referenced_target_id, $reference_field_name, $langcode, $autofill_field_settings, $entity_type, $bundle, &$form, &$form_state) {
-  // Language fail-safe. Use field language or
-  // undefined if provided $langcode is empty.
-  // @todo Should this be done per form field if langcode is empty?
-  // @see https://drupal.org/node/2205245
-  if (empty($langcode)) {
-    $langcode = isset($form[$reference_field_name]['#language']) ? $form[$reference_field_name]['#language'] : LANGUAGE_NONE;
-  }
 
-  $reference_field = $form_state['field'][$reference_field_name][$langcode];
+  $reference_field = $form_state['field'][$reference_field_name][LANGUAGE_NONE];
 
   // Reference entity metadata.
   $referenced_entity_type = $reference_field['field']['settings']['target_type'];
@@ -239,9 +222,18 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
   $form_state['entityreference_autofill'][$entity_type][$bundle] = array();
   foreach ($autofill_fields as $field_name) {
     if (isset($form[$field_name])) {
+      // Language fail-safe. Use field language or
+      // undefined if empty.
+      // @see https://drupal.org/node/2205245
+      if (empty($langcode)) {
+        $language = isset($form[$field_name]['#language']) ? $form[$field_name]['#language'] : LANGUAGE_NONE;
+      }
+      else {
+        $language = $langcode;
+      }
       // Consider overwrite setting.
       if (!$overwrite) {
-        $field_parents = $form_state['field'][$field_name][$langcode]['array_parents'];
+        $field_parents = $form_state['field'][$field_name][$language]['array_parents'];
         $field_input = drupal_array_get_nested_value($form_state['input'], $field_parents);
         if (_entityreference_autofill_field_has_input_value($field_input)) {
           continue;
@@ -249,7 +241,7 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
       }
 
       // Load new value.
-      $items = field_get_items($referenced_entity_type, $referenced_entity, $field_name, $langcode);
+      $items = field_get_items($referenced_entity_type, $referenced_entity, $field_name, $language);
       if (!empty($items)) {
         // Add callback info if AJAX.
         $form_state['entityreference_autofill'][$entity_type][$bundle][$field_name] = _entityreference_autofill_get_wrapper($entity_type, $bundle, $field_name);
@@ -259,19 +251,19 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
         // @see entityreference_autofill.api.php
         $context = array(
           'field_name' => $field_name,
-          'field_type' => $form_state['field'][$field_name][$langcode]['field']['type'],
+          'field_type' => $form_state['field'][$field_name][$language]['field']['type'],
           'items' => $items,
-          'langcode' => $langcode,
+          'langcode' => $language,
           'reference_field_name' => $reference_field_name,
         );
         drupal_alter('entityreference_autofill_fill_items', $form_state, $context);
 
         // Field information for rendering form.
-        $field = $form_state['field'][$field_name][$langcode]['field'];
-        $instance = $form_state['field'][$field_name][$langcode]['instance'];
+        $field = $form_state['field'][$field_name][$language]['field'];
+        $instance = $form_state['field'][$field_name][$language]['instance'];
 
         // Replace field with new defaults.
-        $field_form = field_default_form($referenced_entity_type, $referenced_entity, $field, $instance, $langcode, $items, $form, $form_state);
+        $field_form = field_default_form($referenced_entity_type, $referenced_entity, $field, $instance, $language, $items, $form, $form_state);
         $form[$field_name] = reset($field_form);
 
         // Unset current input to use new default values in form.
