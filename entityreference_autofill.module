@@ -234,9 +234,12 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
       if (empty($language)) {
         $language = LANGUAGE_NONE;
       }
+      // Get current form language.
+      $form_langage = isset($form['language']['#value']) ? $form['language']['#value'] : LANGUAGE_NONE;
+
       // Consider overwrite setting.
       if (!$overwrite) {
-        $field_parents = $form_state['field'][$field_name][$language]['array_parents'];
+        $field_parents = $form_state['field'][$field_name][$form_langage]['array_parents'];
         $field_input = drupal_array_get_nested_value($form_state['input'], $field_parents);
         if (_entityreference_autofill_field_has_input_value($field_input)) {
           continue;
@@ -248,9 +251,6 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
       if (!empty($items)) {
         // Add callback info if AJAX.
         $form_state['entityreference_autofill'][$entity_type][$bundle][$field_name] = _entityreference_autofill_get_wrapper($entity_type, $bundle, $field_name);
-
-        // Get current form language.
-        $form_langage = isset($form['language']['#value']) ? $form['language']['#value'] : LANGUAGE_NONE;
 
         // Let other modules interact with $form_state prior to
         // generating this field's form.
