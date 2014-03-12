@@ -9,8 +9,8 @@
  * Add support for other widgets.
  *
  * @return array
- *  Array of element parents that specify where to attach the AJAX callback,
- *  keyed by widget type.
+ *   Array of element parents that specify where to attach the AJAX callback,
+ *   keyed by widget type.
  *
  * @see entityreference_autofill_supported_widgets()
  */
@@ -23,7 +23,7 @@ function hook_entityreference_autofill_supported_widgets() {
     'og_complex' => NULL,
   );
 }
- 
+
 /**
  * Alter the form state before rendering an autofill field.
  *
@@ -85,11 +85,11 @@ function hook_entityreference_autofill_ajax_commands_alter(&$commands, $context)
 /**
  * Remove ajax from entityreference autofill enabled field(s).
  *
- * @param $field_name
+ * @param string $field_name
  *   The name of the field.
- * @param $element
+ * @param array $element
  *   The field widget form element as constructed by hook_field_widget_form().
- * @param $context
+ * @param array $context
  *   An associative array containing the following key-value pairs, matching the
  *   arguments received by hook_field_widget_form():
  *   - form: The form structure to which widgets are being attached. This may be
@@ -100,7 +100,7 @@ function hook_entityreference_autofill_ajax_commands_alter(&$commands, $context)
  *   - items: Array of default values for this field.
  *   - delta: The order of this item in the array of subelements (0, 1, 2, etc).
  *
- * @return boolean
+ * @return bool
  *   return FALSE for fields you do not want to be AJAX enabled.
  */
 function hook_entityreference_autofill_detach_ajax($field_name, $element, $context) {
@@ -115,11 +115,12 @@ function hook_entityreference_autofill_detach_ajax($field_name, $element, $conte
 /**
  * Alter target id to fetch referenced values from.
  *
- * @param &$target_id
- *   Current target id as determined by entityreference_autofill_field_attach_form().
- * @param &$form_state
+ * @param int &$target_id
+ *   Current target id as determined by
+ *   entityreference_autofill_field_attach_form().
+ * @param array &$form_state
  *   The current $form_state array.
- * @param $context
+ * @param array $context
  *   An associative array containing the following key-value pairs:
  *   - field_name: The name of the reference field.
  *   - field: The reference field array.
