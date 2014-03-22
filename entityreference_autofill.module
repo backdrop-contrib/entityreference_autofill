@@ -233,7 +233,7 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
   $form_state['entityreference_autofill'][$entity_type][$bundle] = array();
 
   // Load relevant part of form's input array.
-  $input = &drupal_array_get_nested_value($form_state['input'], $form['#parents']);
+  $form_input = &drupal_array_get_nested_value($form_state['input'], $form['#parents']);
 
   foreach ($autofill_fields as $field_name) {
     if (isset($form[$field_name])) {
@@ -255,7 +255,7 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
 
       // Consider overwrite setting.
       if (!$overwrite) {
-        if (_entityreference_autofill_field_has_input_value($input[$field_name])) {
+        if (_entityreference_autofill_field_has_input_value($form_input[$field_name])) {
           continue;
         }
       }
@@ -268,7 +268,6 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
         // Field information for rendering form.
         $field = field_info_field($field_name);
         $instance = field_info_instance($entity_type, $field_name, $bundle);
-        $parents = $form['#parents'];
 
         // Let other modules interact with $form_state prior to
         // generating this field's form.
@@ -285,14 +284,8 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
         // Replace field state with referenced values.
         // This is needed for multi-value fields with different
         // cardinality in source and destination.
-        $new_field_state = array(
-          'field' => $field,
-          'instance' => $instance,
-          'items_count' => count($items),
-          'array_parents' => $field_state['array_parents'],
-          'errors' => array(),
-        );
-        field_form_set_state($parents, $field_name, $field_language, $form_state, $new_field_state);
+        $field_state['items_count'] = count($items);
+        field_form_set_state($form['#parents'], $field_name, $field_language, $form_state, $new_field_state);
 
         // Replace field with new defaults.
         // @todo $referenced_language or $field_language here?
@@ -301,7 +294,7 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
         $form[$field_name] = reset($field_form);
 
         // Unset current input to use new default values in form.
-        unset($input[$field_name]);
+        unset($form_input[$field_name]);
       }
     }
   }
