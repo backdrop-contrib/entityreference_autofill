@@ -91,6 +91,11 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
         $reference_field_name = substr($form_state['triggering_element']['#name'], 0, $field_name_end_pos);
       }
     }
+    else {
+      // Could not determine reference field.
+      return;
+    }
+
     // Fill form with values from selected entity.
     if (!empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
 
