@@ -56,6 +56,7 @@ class EntityReferenceAutofillInstanceBehavior extends EntityReference_BehaviorHa
       '#type' => 'checkbox',
       '#title' => t('Overwrite existing data'),
       '#description' => t('Select if you want to overwrite fields that already have values. <br/><em><strong>NOTE:</strong> Disabling this is experimental and might not work 100%. If you experience issues with fields being overridden nonetheless, please report what field type and settings this occurs on in the modules issue queue on drupal.org</em>'),
+      '#default_value' => isset($settings['overwrite']) ? $settings['overwrite'] : 1,
     );
 
     if (empty($field_options)) {
