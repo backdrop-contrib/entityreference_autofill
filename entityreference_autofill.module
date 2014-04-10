@@ -281,7 +281,7 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
         // This is needed for multi-value fields with different
         // cardinality in source and destination.
         $field_state['items_count'] = count($items);
-        field_form_set_state($form['#parents'], $field_name, $field_language, $form_state, $new_field_state);
+        field_form_set_state($form['#parents'], $field_name, $field_language, $form_state, $field_state);
 
         // Replace field with new defaults.
         // @todo $referenced_language or $field_language here?
