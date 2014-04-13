@@ -172,14 +172,12 @@ function entityreference_autofill_form_autofill($form, $form_state) {
   $field_parent = drupal_array_get_nested_value($form, $parents);
   $commands = array();
 
-  $messages = theme('status_messages');
   foreach ($form_state['entityreference_autofill'][$entity_type][$bundle] as $field_name => $wrapper_id) {
-    // Attach status messages to first field.
-    if ($messages) {
+    // Attach status messages to fields.
+    if ($messages = theme('status_messages')) {
       $field_parent[$field_name]['messages'] = array(
         '#markup' => '<div class="views-messages">' . $messages . '</div>',
       );
-      $messages = FALSE;
     }
     $commands[] = ajax_command_replace('#' . $wrapper_id, drupal_render($field_parent[$field_name]));
   }
