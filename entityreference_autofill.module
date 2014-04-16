@@ -258,7 +258,7 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
 
       // Consider overwrite setting.
       if (!$overwrite) {
-        if (_entityreference_autofill_field_has_input_value($form_input[$field_name])) {
+        if (_entityreference_autofill_field_has_value($form_input[$field_name][$field_language], $field_name)) {
           continue;
         }
       }
@@ -355,7 +355,36 @@ function _entityreference_autofill_supported_widgets($widget_type = FALSE) {
 }
 
 /**
- * Recursive check if a field already has a set value (Experimental).
+ * Check if a field has an input value.
+ *
+ * @param array $items
+ *   Array of items in the fields $form_state['input'] array.
+ * @param string $field_name
+ *   The name of the field in question.
+ *
+ * @return bool
+ *   Whether or not a value is set for this field.
+ */
+function _entityreference_autofill_field_has_value($items, $field_name) {
+  // Find out if field implement hook_field_is_empty.
+  $field_info = field_info_field($field_name);
+  $function = $field_info['module'] . '_field_is_empty';
+
+  // Check if empty.
+  if (function_exists($function)) {
+    foreach ($items as $item) {
+      if (!$function($item, $field_info)) {
+        return TRUE;
+      }
+    }
+    return FALSE;
+  }
+  // Fallback to recursive array check.
+  return _entityreference_autofill_field_array_value_exists($items);
+}
+
+/**
+ * Recursive check if a field already has a set value.
  *
  * @param string $field_input
  *   Array of field input values.
@@ -366,10 +395,10 @@ function _entityreference_autofill_supported_widgets($widget_type = FALSE) {
  * @todo Not sure how good this works, neither if there's a
  *   more efficient/clean way of doing it.
  */
-function _entityreference_autofill_field_has_input_value($field_input) {
+function _entityreference_autofill_field_array_value_exists($field_input) {
   if (is_array($field_input)) {
     foreach ($field_input as $value) {
-      if (_entityreference_autofill_field_has_input_value($value)) {
+      if (_entityreference_autofill_field_array_value_exists($value)) {
         return TRUE;
       }
     }
