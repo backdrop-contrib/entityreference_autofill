@@ -294,7 +294,7 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
         // Replace field with new defaults.
         // @todo $referenced_language or $field_language here?
         // Implications if they differ?
-        $field_form = field_default_form($entity_type, $referenced_entity, $field, $instance, $referenced_language, $items, $form, $form_state);
+        $field_form = field_default_form($referenced_entity_type, $referenced_entity, $field, $instance, $referenced_language, $items, $form, $form_state);
         $form[$field_name] = reset($field_form);
 
         // Unset current input to use new default values in form.
