@@ -79,32 +79,42 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
   // use the triggering field's settings to autofill.
   $callback = isset($form_state['triggering_element']['#ajax']['callback']) ? $form_state['triggering_element']['#ajax']['callback'] : FALSE;
   if ($callback == 'entityreference_autofill_form_autofill') {
-    if (isset($form_state['triggering_element']['#field_name'])) {
-      $reference_field_name = $form_state['triggering_element']['#field_name'];
+    $triggering_element = $form_state['triggering_element'];
+    if (isset($triggering_element['#field_name'])) {
+      $reference_field_name = $triggering_element['#field_name'];
     }
-    elseif (isset($form_state['triggering_element']['#name'])) {
+    elseif (isset($triggering_element['#name'])) {
       // Try to fetch the fields name part from #name key
       // (#field_name is not available for radio widget).
       //
       // @todo Hacky solution, this (outer) condition should not be necessary,
       //   find other way to get triggering field name?
-      $field_name_end_pos = strpos($form_state['triggering_element']['#name'], '[');
+      $field_name_end_pos = strpos($triggering_element['#name'], '[');
       if ($field_name_end_pos) {
-        $reference_field_name = substr($form_state['triggering_element']['#name'], 0, $field_name_end_pos);
+        $reference_field_name = substr($triggering_element['#name'], 0, $field_name_end_pos);
       }
     }
 
     // Fill form with values from selected entity.
     if (isset($reference_field_name) && !empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
 
-      $reference_field_parents = $form_state['triggering_element']['#parents'];
+      $reference_field_parents = $triggering_element['#parents'];
       $referenced_target_id = drupal_array_get_nested_value($form_state['values'], $reference_field_parents);
+
+      // Get field and instance info for triggering element.
+      // @todo Fetch from form_state instead?
+      // In that case, field collections - how?
+      $context_field = array();
+      $context_field['field'] = field_info_field($reference_field_name);
+      if (isset($triggering_element['#entity_type'], $triggering_element['#bundle'])) {
+        $context_field['instance'] = field_info_instance($triggering_element['#entity_type'], $reference_field_name, $triggering_element['#bundle']);
+      }
 
       // For third-party widgets, reference target id might have to be fetched
       // from someplace else. Alter hook for module-specific customization.
       $context = array(
         'field_name' => $reference_field_name,
-        'field' => $form_state['field'][$reference_field_name],
+        'field' => $context_field,
         'form' => $form,
         'langcode' => $langcode,
       );

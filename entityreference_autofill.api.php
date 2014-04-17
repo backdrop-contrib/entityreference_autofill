@@ -123,7 +123,9 @@ function hook_entityreference_autofill_detach_ajax($field_name, $element, $conte
  * @param array $context
  *   An associative array containing the following key-value pairs:
  *   - field_name: The name of the reference field.
- *   - field: The reference field array.
+ *   - field: Triggering field (The entity reference field) info array.
+ *     - field: Field info.
+ *     - instance: Instance info.
  *   - form: Current form array.
  *   - langcode: The current langcode.
  */
