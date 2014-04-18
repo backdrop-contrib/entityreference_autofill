@@ -175,6 +175,11 @@ function entityreference_autofill_form_autofill($form, $form_state) {
   $entity_type = $form_state['triggering_element']['#entity_type'];
   $bundle = isset($form_state['triggering_element']['#bundle']) ? $form_state['triggering_element']['#bundle'] : $entity_type;
 
+  if(!isset($form_state['entityreference_autofill'][$entity_type][$bundle])) {
+    // Nothing to return.
+    return;
+  }
+
   // Load field names and their mapped wrapper ids.
   $parents = !empty($form_state['triggering_element']['#field_parents']) ? $form_state['triggering_element']['#field_parents'] : array();
   $autofill_wrapper_map = drupal_array_get_nested_value($form_state['entityreference_autofill'][$entity_type][$bundle], $parents);
@@ -297,8 +302,8 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
         // generating this field's form.
         // @see entityreference_autofill.api.php
         $context = array(
-          'field_name' => $field_name,
-          'field_type' => $field['type'],
+          'field' => $field,
+          'instance' => $instance,
           'items' => $items,
           'langcode' => $referenced_language,
           'reference_field_name' => $reference_field_name,

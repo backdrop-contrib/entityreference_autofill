@@ -9,15 +9,13 @@
  */
 function entityreference_autofill_addressfield_entityreference_autofill_fill_items_alter(&$form_state, $context) {
   // Add entityreference autofill support to addressfield module.
-  if ($context['field_type'] == 'addressfield') {
-    // Get instance data of autofill-enabled entityreference field.
-    $instance = $form_state['field'][$context['reference_field_name']][$context['langcode']]['instance'];
+  if ($context['field']['type'] == 'addressfield') {
     // Generate element key for addressfield form state.
     // @see addressfield_field_widget_form()
     $element_key_parts = array(
-      $instance['entity_type'],
-      $instance['bundle'],
-      $context['field_name'],
+      $context['instance']['entity_type'],
+      $context['instance']['bundle'],
+      $context['field']['field_name'],
       $context['langcode'],
     );
     $element_key_base = implode('|', $element_key_parts);
