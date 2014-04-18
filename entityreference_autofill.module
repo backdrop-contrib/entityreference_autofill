@@ -80,6 +80,8 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
   $callback = isset($form_state['triggering_element']['#ajax']['callback']) ? $form_state['triggering_element']['#ajax']['callback'] : FALSE;
   if ($callback == 'entityreference_autofill_form_autofill') {
     $triggering_element = $form_state['triggering_element'];
+    $parents = $triggering_element['#field_parents'];
+
     if (isset($triggering_element['#field_name'])) {
       $reference_field_name = $triggering_element['#field_name'];
     }
@@ -97,7 +99,6 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
 
     // Fill form with values from selected entity.
     if (isset($reference_field_name) && !empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
-
       $reference_field_parents = $triggering_element['#parents'];
       $referenced_target_id = drupal_array_get_nested_value($form_state['values'], $reference_field_parents);
 
@@ -153,7 +154,7 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
   // Add autofill wrappers to enabled fields.
   foreach ($autofill_bundle_settings as $reference_field) {
     foreach ($reference_field['fields'] as $field_name) {
-      $wrapper_id = _entityreference_autofill_get_wrapper($entity_type, $bundle, $field_name);
+      $wrapper_id = _entityreference_autofill_get_wrapper($entity_type, $bundle, $field_name, $form['#parents']);
       $form[$field_name]['#prefix'] = '<div id="' . $wrapper_id . '" class="entityreference-autofill-field">';
       $form[$field_name]['#suffix'] = '</div>';
     }
@@ -173,8 +174,13 @@ function entityreference_autofill_form_autofill($form, $form_state) {
   }
   $entity_type = $form_state['triggering_element']['#entity_type'];
   $bundle = isset($form_state['triggering_element']['#bundle']) ? $form_state['triggering_element']['#bundle'] : $entity_type;
+
+  // Load field names and their mapped wrapper ids.
+  $parents = !empty($form_state['triggering_element']['#field_parents']) ? $form_state['triggering_element']['#field_parents'] : array();
+  $autofill_wrapper_map = drupal_array_get_nested_value($form_state['entityreference_autofill'][$entity_type][$bundle], $parents);
+
   // No values to fill.
-  if (!isset($form_state['entityreference_autofill'][$entity_type][$bundle])) {
+  if (!$autofill_wrapper_map) {
     return;
   }
   // Build AJAX replace commands.
@@ -182,7 +188,7 @@ function entityreference_autofill_form_autofill($form, $form_state) {
   $field_parent = drupal_array_get_nested_value($form, $parents);
   $commands = array();
 
-  foreach ($form_state['entityreference_autofill'][$entity_type][$bundle] as $field_name => $wrapper_id) {
+  foreach ($autofill_wrapper_map as $field_name => $wrapper_id) {
     // Attach status messages to fields.
     if ($messages = theme('status_messages')) {
       $field_parent[$field_name]['messages'] = array(
@@ -244,7 +250,12 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
   $overwrite = $autofill_field_settings['overwrite'];
 
   // Empty current form_state for this bundle.
-  $form_state['entityreference_autofill'][$entity_type][$bundle] = array();
+  if (!isset($form_state['entityreference_autofill'][$entity_type][$bundle])) {
+    $form_state['entityreference_autofill'][$entity_type][$bundle] = array();
+  }
+
+  drupal_array_set_nested_value($form_state['entityreference_autofill'][$entity_type][$bundle], $form['#parents'], array());
+  $autofill_map = &drupal_array_get_nested_value($form_state['entityreference_autofill'][$entity_type][$bundle], $form['#parents']);
 
   // Load relevant part of form's input array.
   $form_input = &drupal_array_get_nested_value($form_state['input'], $form['#parents']);
@@ -276,7 +287,7 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
       $items = field_get_items($referenced_entity_type, $referenced_entity, $field_name, $referenced_language);
       if (!empty($items)) {
         // Add callback info if AJAX.
-        $form_state['entityreference_autofill'][$entity_type][$bundle][$field_name] = _entityreference_autofill_get_wrapper($entity_type, $bundle, $field_name);
+        $autofill_map[$field_name] = _entityreference_autofill_get_wrapper($entity_type, $bundle, $field_name, $form['#parents']);
 
         // Field information for rendering form.
         $field = field_info_field($field_name);
@@ -327,8 +338,8 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
  * @return string
  *   field wrapper html id.
  */
-function _entityreference_autofill_get_wrapper($entity_type, $bundle, $field_name) {
-  return 'entityreference-autofill-' . $entity_type . '-' . $field_name;
+function _entityreference_autofill_get_wrapper($entity_type, $bundle, $field_name, $parents = array()) {
+  return 'entityreference-autofill-' . $entity_type . '-' . $bundle . '--' . implode('-', $parents) . '-' . $field_name;
 }
 
 /**
