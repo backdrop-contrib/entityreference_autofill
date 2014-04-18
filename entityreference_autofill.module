@@ -175,7 +175,7 @@ function entityreference_autofill_form_autofill($form, $form_state) {
   $entity_type = $form_state['triggering_element']['#entity_type'];
   $bundle = isset($form_state['triggering_element']['#bundle']) ? $form_state['triggering_element']['#bundle'] : $entity_type;
 
-  if(!isset($form_state['entityreference_autofill'][$entity_type][$bundle])) {
+  if (!isset($form_state['entityreference_autofill'][$entity_type][$bundle])) {
     // Nothing to return.
     return;
   }
