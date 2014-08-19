@@ -265,6 +265,10 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
   // Load relevant part of form's input array.
   $form_input = &drupal_array_get_nested_value($form_state['input'], $form['#parents']);
 
+  // Save current form entity, in case field_default_form gets any ideas on
+  // multiple value form elements.
+  // @see https://www.drupal.org/node/2318109#comment-9068141
+  $preserved_entity = isset($form['#entity']) ? $form['#entity'] : FALSE;
   foreach ($autofill_fields as $field_name) {
     if (isset($form[$field_name])) {
       // Language fail-safe for referenced entity.
@@ -321,6 +325,13 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
         // @todo $referenced_language or $field_language here?
         // Implications if they differ?
         $field_form = field_default_form($referenced_entity_type, $referenced_entity, $field, $instance, $referenced_language, $items, $form, $form_state);
+
+        // Reset form entity.
+        // @see https://www.drupal.org/node/2318109#comment-9068141
+        if($preserved_entity) {
+          $form['#entity'] = $preserved_entity;
+        }
+
         $form[$field_name] = reset($field_form);
 
         // Unset current input to use new default values in form.
