@@ -71,7 +71,6 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
   if (empty($autofill_settings[$entity_type][$bundle])) {
     return;
   }
-
   // Load settings from form_state.
   $autofill_bundle_settings = $autofill_settings[$entity_type][$bundle];
 
@@ -80,27 +79,30 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
   $callback = isset($form_state['triggering_element']['#ajax']['callback']) ? $form_state['triggering_element']['#ajax']['callback'] : FALSE;
   if ($callback == 'entityreference_autofill_form_autofill') {
     $triggering_element = $form_state['triggering_element'];
-    $parents = $triggering_element['#field_parents'];
-
-    if (isset($triggering_element['#field_name'])) {
-      $reference_field_name = $triggering_element['#field_name'];
-    }
-    elseif (isset($triggering_element['#name'])) {
-      // Try to fetch the fields name part from #name key
-      // (#field_name is not available for radio widget).
-      //
-      // @todo Hacky solution, this (outer) condition should not be necessary,
-      //   find other way to get triggering field name?
-      $field_name_end_pos = strpos($triggering_element['#name'], '[');
-      if ($field_name_end_pos) {
-        $reference_field_name = substr($triggering_element['#name'], 0, $field_name_end_pos);
+    
+    // @todo Ensure this is the base form containing the triggering element.
+    $reference_field_parents = $triggering_element['#parents'];
+    foreach ($form['#parents'] as $parent) {
+      if ($parent == current($reference_field_parents)) {
+        array_shift($reference_field_parents);
+      }
+      else {
+        return;
       }
     }
 
+    if(!$element_info = drupal_array_get_nested_value($form, $reference_field_parents)) {
+      return;
+    }
+    $reference_field_name = $element_info['#field_name'];
+    // Add element info to form state.
+    // @see entityreference_autofill_form_autofill().
+    // @todo find alternative way
+    $form_state['entityreference_autofill']['#element_info'] = $element_info;
+
     // Fill form with values from selected entity.
-    if (isset($reference_field_name) && !empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
-      $reference_field_parents = $triggering_element['#parents'];
-      $referenced_target_id = drupal_array_get_nested_value($form_state['values'], $reference_field_parents);
+    if (!empty($autofill_bundle_settings[$reference_field_name]['fields'])) {
+      $referenced_target_id = drupal_array_get_nested_value($form_state['values'], $triggering_element['#parents']);
 
       // Get field and instance info for triggering element.
       // @todo Fetch from form_state instead?
@@ -169,11 +171,13 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
  */
 function entityreference_autofill_form_autofill($form, $form_state) {
   // Need entity type to continue.
-  if (!isset($form_state['triggering_element']['#entity_type'])) {
+  if (!isset($form_state['entityreference_autofill']['#element_info'])) {
     return;
   }
-  $entity_type = $form_state['triggering_element']['#entity_type'];
-  $bundle = isset($form_state['triggering_element']['#bundle']) ? $form_state['triggering_element']['#bundle'] : $entity_type;
+  $element_info = $form_state['entityreference_autofill']['#element_info'];
+  $entity_type = $element_info['#entity_type'];
+  // @todo Eill bundle always be set? Check with user entity.
+  $bundle = isset($element_info['#bundle']) ? $element_info['#bundle'] : $entity_type;
 
   if (!isset($form_state['entityreference_autofill'][$entity_type][$bundle])) {
     // Nothing to return.
@@ -181,7 +185,7 @@ function entityreference_autofill_form_autofill($form, $form_state) {
   }
 
   // Load field names and their mapped wrapper ids.
-  $parents = !empty($form_state['triggering_element']['#field_parents']) ? $form_state['triggering_element']['#field_parents'] : array();
+  $parents = !empty($element_info['#field_parents']) ? $element_info['#field_parents'] : array();
   $autofill_wrapper_map = drupal_array_get_nested_value($form_state['entityreference_autofill'][$entity_type][$bundle], $parents);
 
   // No values to fill.
@@ -189,7 +193,6 @@ function entityreference_autofill_form_autofill($form, $form_state) {
     return;
   }
   // Build AJAX replace commands.
-  $parents = $form_state['triggering_element']['#field_parents'];
   $field_parent = drupal_array_get_nested_value($form, $parents);
   $commands = array();
 
@@ -246,7 +249,6 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
   if (!is_numeric($referenced_target_id)) {
     return;
   }
-
   // Load referenced entity.
   $referenced_entity = entity_load_single($referenced_entity_type, $referenced_target_id);
 
@@ -328,12 +330,10 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
 
         // Reset form entity.
         // @see https://www.drupal.org/node/2318109#comment-9068141
-        if($preserved_entity) {
+        if ($preserved_entity) {
           $form['#entity'] = $preserved_entity;
         }
-
         $form[$field_name] = reset($field_form);
-
         // Unset current input to use new default values in form.
         unset($form_input[$field_name]);
       }
