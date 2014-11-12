@@ -79,7 +79,7 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
   $callback = isset($form_state['triggering_element']['#ajax']['callback']) ? $form_state['triggering_element']['#ajax']['callback'] : FALSE;
   if ($callback == 'entityreference_autofill_form_autofill') {
     $triggering_element = $form_state['triggering_element'];
-    
+
     // @todo Ensure this is the base form containing the triggering element.
     $reference_field_parents = $triggering_element['#parents'];
     foreach ($form['#parents'] as $parent) {
@@ -91,13 +91,13 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
       }
     }
 
-    if(!$element_info = drupal_array_get_nested_value($form, $reference_field_parents)) {
+    if (!$element_info = drupal_array_get_nested_value($form, $reference_field_parents)) {
       return;
     }
     $reference_field_name = $element_info['#field_name'];
     // Add element info to form state.
     // @see entityreference_autofill_form_autofill().
-    // @todo find alternative way
+    // @todo find alternative way to do this.
     $form_state['entityreference_autofill']['#element_info'] = $element_info;
 
     // Fill form with values from selected entity.
