@@ -32,6 +32,7 @@ function hook_entityreference_autofill_supported_widgets() {
  * @param array $context
  *   Field context variables.
  *   - field: The field info array of the field about to be populated.
+ *   - form: The entity form's form API array.
  *   - instance: The instance of the field.
  *   - items: The $items belonging to field_name in the
  *     referenced entity.

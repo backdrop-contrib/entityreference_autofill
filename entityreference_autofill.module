@@ -308,6 +308,7 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
         // generating this field's form.
         // @see entityreference_autofill.api.php
         $context = array(
+          'form' => $form,
           'field' => $field,
           'instance' => $instance,
           'items' => $items,
