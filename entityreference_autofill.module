@@ -82,6 +82,10 @@ function entityreference_autofill_field_attach_form($entity_type, $entity, &$for
 
     // @todo Ensure this is the base form containing the triggering element.
     $reference_field_parents = $triggering_element['#parents'];
+    // Reset array pointers to ensure parent arrays are in sync.
+    reset($reference_field_parents);
+    reset($form['#parents']);
+
     foreach ($form['#parents'] as $parent) {
       if ($parent == current($reference_field_parents)) {
         array_shift($reference_field_parents);
