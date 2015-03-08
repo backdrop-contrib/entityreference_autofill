@@ -34,27 +34,57 @@ function entityreference_autofill_field_widget_form_alter(&$element, &$form_stat
 
   // Add AJAX callback to entity reference fields.
   if ($add_ajax_callback) {
-
     $widget_type = $context['instance']['widget']['type'];
     // Get path to where in the element to put the AJAX callback.
     $parents = _entityreference_autofill_supported_widgets($widget_type);
     if (is_array($parents)) {
-
       // Other modules can disable ajax for fields at their own peril.
       $is_allowed = module_invoke_all('entityreference_autofill_detach_ajax', $context['field']['field_name'], $element, $context);
       // Skip field if (strict) FALSE is returned by any module.
       if (in_array(FALSE, $is_allowed, TRUE)) {
         return;
       }
-
-      $ajax_parent = &drupal_array_get_nested_value($element, $parents);
       // Add ajax callback to element.
-      $ajax_parent['#ajax'] = array(
-        'callback' => 'entityreference_autofill_form_autofill',
-      );
+      $ajax_parents = &entityreference_autofill_get_ajax_parents($parents, $element);
+      foreach($ajax_parents as &$ajax_parent) {
+        $ajax_parent['#ajax'] = array(
+          'callback' => 'entityreference_autofill_form_autofill',
+        );
+      }
     }
     return;
   }
+}
+
+/**
+ * Find element parent as defined by 
+ * entityreference_autofill_supported_widgets().
+ *
+ * @param array $parents
+ *   Parents array returned by entityreference_autofill_supported_widgets().
+ * @param array &$element
+ *   The root element of $parents.
+ *
+ * @return &array
+ *   Array of references to where in $element to add AJAX callback.
+ */
+function entityreference_autofill_get_ajax_parents($parents, &$element) {
+  $ajax_parents = array();
+  // Empty arrays in the parent array are interpreted as element children.
+  foreach ($parents as $key => $parent) {
+    if (is_array($parent)) {
+      $remainder = array_slice($parents, $key + 1); 
+      $parents = array_slice($parents, 0, $key);
+      $element = &drupal_array_get_nested_value($element, $parents);
+      foreach (element_children($element) as $key) {
+        $sub_parents = &entityreference_autofill_get_ajax_parents($remainder, $element[$key]);
+        $ajax_parents = &array_merge($ajax_parents, $sub_parents);
+      }
+      return $ajax_parents;
+    }
+  }
+  $ajax_parents[] = &drupal_array_get_nested_value($element, $parents);
+  return $ajax_parents;
 }
 
 /**
@@ -180,7 +210,7 @@ function entityreference_autofill_form_autofill($form, $form_state) {
   }
   $element_info = $form_state['entityreference_autofill']['#element_info'];
   $entity_type = $element_info['#entity_type'];
-  // @todo Eill bundle always be set? Check with user entity.
+  // @todo Will bundle always be set? Check with user entity.
   $bundle = isset($element_info['#bundle']) ? $element_info['#bundle'] : $entity_type;
 
   if (!isset($form_state['entityreference_autofill'][$entity_type][$bundle])) {
