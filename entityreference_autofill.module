@@ -68,7 +68,7 @@ function entityreference_autofill_field_widget_form_alter(&$element, &$form_stat
  * @return &array
  *   Array of references to where in $element to add AJAX callback.
  */
-function entityreference_autofill_get_ajax_parents($parents, &$element) {
+function &entityreference_autofill_get_ajax_parents($parents, &$element) {
   $ajax_parents = array();
   // Empty arrays in the parent array are interpreted as element children.
   foreach ($parents as $key => $parent) {
