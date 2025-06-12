@@ -1,6 +1,7 @@
 name = Entity reference autofill
 description = Auto-populate entity form fields with values from their referenced entities.
-core = 7.x
+backdrop = 1.x
+type = module
 package = Fields
 
 dependencies[] = ctools

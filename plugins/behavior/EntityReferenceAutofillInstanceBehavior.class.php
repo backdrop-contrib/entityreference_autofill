@@ -43,10 +43,10 @@ class EntityReferenceAutofillInstanceBehavior extends EntityReference_BehaviorHa
           $field_options[$field_name] = t(
             '@field_label (@field_name): <em>Available in bundle(s) @bundles</em>',
             array(
-              '@field_label' => $field_info['label'],
-              '@field_name' => $field_name,
-              '@bundles' => implode(', ', $option_bundles),
-            )
+            '@field_label' => $field_info['label'],
+            '@field_name' => $field_name,
+            '@bundles' => implode(', ', $option_bundles),
+          )
           );
         }
       }

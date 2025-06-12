@@ -1,6 +1,7 @@
 name = Entity reference autofill addressfield
 description = Support for filling addressfield using Entity reference autofill.
-core = 7.x
+backdrop = 1.x
+type = module
 package = Fields
 
 dependencies[] = addressfield
