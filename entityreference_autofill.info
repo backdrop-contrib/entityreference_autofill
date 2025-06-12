@@ -1,9 +1,8 @@
-name = Entity reference autofill
-description = Auto-populate entity form fields with values from their referenced entities.
+name = Entity Reference Autofill
+description = Populate entity form fields with values from referenced entities.
 backdrop = 1.x
 type = module
 package = Fields
 
-dependencies[] = ctools
 dependencies[] = entity
 dependencies[] = entityreference
