@@ -128,6 +128,6 @@ function hook_entityreference_autofill_target_id_alter(&$target_id, &$form_state
   // Fetch value from form input array instead of values.
   if (og_is_group_audience_field($context['field_name'])) {
     $reference_field_parents = $form_state['triggering_element']['#parents'];
-    $referenced_target_id = drupal_array_get_nested_value($form_state['input'], $reference_field_parents);
+    $referenced_target_id = backdrop_array_get_nested_value($form_state['input'], $reference_field_parents);
   }
 }

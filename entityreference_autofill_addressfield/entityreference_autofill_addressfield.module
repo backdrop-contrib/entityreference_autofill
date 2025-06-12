@@ -17,6 +17,6 @@ function entityreference_autofill_addressfield_entityreference_autofill_fill_ite
       $context['form']['#parents'],
       array($context['field']['field_name'], $context['langcode'])
     );
-    drupal_array_set_nested_value($form_state, $parents, $context['items']);
+    backdrop_array_set_nested_value($form_state, $parents, $context['items']);
   }
 }

@@ -1,6 +1,7 @@
 name = Entity reference autofill OG
 description = Organic groups widget support for entity reference autofill (Under development, not thoroughly tested).
-core = 7.x
+backdrop = 1.x
+type = module
 package = Fields
 
 dependencies[] = og
