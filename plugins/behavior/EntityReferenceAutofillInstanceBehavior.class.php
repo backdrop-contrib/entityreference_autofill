@@ -7,7 +7,7 @@
 /**
  * Class for handling module behavior.
  */
-class EntityReferenceAutofillInstanceBehavior extends EntityReference_BehaviorHandler_Abstract {
+class EntityReferenceBehaviorHandlerAutofill extends EntityReferenceBehaviorHandler {
 
   /**
    * Generate a settings form for this handler.
