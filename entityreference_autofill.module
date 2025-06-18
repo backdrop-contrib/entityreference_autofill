@@ -302,7 +302,7 @@ function entityreference_autofill_populate_form_by_field($referenced_target_id, 
     return;
   }
   // Load referenced entity.
-  $referenced_entity = entity_load_single($referenced_entity_type, $referenced_target_id);
+  $referenced_entity = entity_load($referenced_entity_type, $referenced_target_id);
 
   // Populate fields with values from referenced node.
   $autofill_fields = $autofill_field_settings['fields'];
