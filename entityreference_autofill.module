@@ -21,7 +21,7 @@
 /**
  * Implements hook_entityreference_behavior_plugins().
  */
-function entityreference_entityreference_autofill_behavior_plugins() {
+function entityreference_autofill_entityreference_behavior_plugins() {
   $plugins['autofill'] = array(
     'title' => t('Entity Reference Autofill'),
     'description' => t('Populate form fields on entity selection.'),
@@ -564,6 +564,6 @@ function _entityreference_autofill_get_settings($reset = FALSE) {
  */
 function entityreference_autofill_autoload_info() {
   return array(
-    'EntityReferenceBehaviorHandlerAutofill' => 'plugins/behavior/EntityReferenceAutofillInstanceBehavior.class.php',
+    'EntityReferenceBehaviorHandlerAutofill' => 'plugins/behavior/EntityReferenceBehaviorAutofill.class.php',
   );
 }
