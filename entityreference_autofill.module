@@ -4,13 +4,31 @@
  * Entity reference autofill module.
  */
 
+
 /**
- * Implements hook_ctools_plugin_directory().
+  * Register a new behavior plugin.
+  *
+  * @return
+  *   Array of plugins keyed by the plugin name, and the following as value:
+  *   - title: The title of the plugin.
+  *   - description: The description of the plugin.
+  *   - class: The class for the plugin.
+  *   - behavior type: the type of behavior plugin.
+  *   - access callback: the name of the function. Defaults to FALSE.
+  *   - force enabled: used for disabled property of element.
+  */
+
+/**
+ * Implements hook_entityreference_behavior_plugins().
  */
-function entityreference_autofill_ctools_plugin_directory($module, $plugin) {
-  if ($module == 'entityreference' || $module == 'ctools') {
-    return 'plugins/' . $plugin;
-  }
+function entityreference_autofill_entityreference_behavior_plugins() {
+  $plugins['autofill'] = array(
+    'title' => t('Entity Reference Autofill'),
+    'description' => t('Populate form fields on entity selection.'),
+    'class' => 'EntityReferenceBehaviorHandlerAutofill',
+    'behavior type' => 'instance',
+  );
+  return $plugins;
 }
 
 /**
@@ -546,6 +564,6 @@ function _entityreference_autofill_get_settings($reset = FALSE) {
  */
 function entityreference_autofill_autoload_info() {
   return array(
-    'EntityReferenceAutofillInstanceBehavior' => 'plugins/behavior/EntityReferenceAutofillInstanceBehavior.class.php',
+    'EntityReferenceBehaviorHandlerAutofill' => 'plugins/behavior/EntityReferenceBehaviorAutofill.class.php',
   );
 }
