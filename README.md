@@ -8,7 +8,7 @@ referenced entities.
 Status
 ------
 
-The module isn't ready to use. I hope to get it working soon.
+The basics are working. It may be that the submodules aren't working yet. Ready for testing, but not ready for a release.
 
 
 Installation
