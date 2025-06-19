@@ -66,13 +66,13 @@ Provide a page with the phone number of a contact person:
 
   - Additional behaviors: Entity Reference Autofill, Fields: Phone Number
   - Number of values: 1
-  - Target bundles: People
+  - Target bundles: Contact Person
   - Widget type: Autocomplete
 
 - Create some Contact Person items and fill in their phone numbers.
 
-- Create a Page, and reference a Contact Person. The Phone Number field will
-  be autofilled.
+- Create a Page, and reference a Contact Person. The Phone Number field of the Page
+  will be autofilled.
 
 Issues
 ------
