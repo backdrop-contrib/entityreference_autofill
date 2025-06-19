@@ -1,14 +1,15 @@
 Entity Reference Autofill
 =========================
 
-The Entity Reference Autofill module gives Entity Reference fields
-support to populate fields in their form with values from the
-referenced entities.
+The Entity Reference Autofill module provides an option for Entity Reference 
+fields to populate other fields in the entity form with values from a referenced 
+entity's field.
 
 Status
 ------
 
-The basics are working. It may be that the submodules aren't working yet. Ready for testing, but not ready for a release.
+The basics are working. It may be that the submodules aren't working yet. 
+Ready for testing, but not ready for a release.
 
 
 Installation
@@ -17,28 +18,61 @@ Installation
 Install this module using the [official Backdrop CMS instructions](https://backdropcms.org/guide/modules).
 
 
+Requirements
+------------
+
+Entity Reference (part of Backdrop core)
+
+
 Configuration
 -------------
 
-- Add a field you want to be auto-filled to your entity.
+The module doesn't provide a configuration page.
 
-- If you plan to load the referenced values from another entity type or bundle,
-  add the same field to the referenced entity.
+To provide the Autofill option for an Entity Reference field, configure your 
+fields as follows:
 
-- When you have set up both a source and destination field, add an
-  entityreference field to the source entity. Currently supported widgets are
-  autocomplete, select list and radio buttons. Note that the field can only have
-  one value, i.e. multi-value fields wont work.
+- Add the field you want to be autofilled to your entity type or bundle,
+  let's say content type A. This is the destination field.
+
+- If you plan to load referenced values from another content type, add the same
+  field as 'existing field' to content type B. This is the source field.
+
+- Add an Entity Reference field to content type A.
+  Supported widgets: Autocomplete, Select list, and Checkboxes/radio buttons.
+  Note that the field can only have one value; multi-value fields don't work.
   
-- In the reference field's instance settings, enable "Entity reference autofill"
-  under "Additional behaviors". Select the fields you wish to fetch from the
-  referenced entity.
-
-- Optionally, unselect "Overwrite existing data" if you want to preserve
-  field data already entered before selecting referenced entity.
+  - In the Entity Reference field instance settings, enable the option "Entity
+    Reference Autofill" under "Additional behaviors". Select the source field you
+    want to load from the referenced entity.
+  - If desired, disable the option "Overwrite existing data".
   
-- Go to the entity form and try it out by loading a value into the
-  reference field.
+- Create a content item and fill in the source field.
+
+- Create another content item and add a value to the Entity Reference field.
+  The destination field will be autofilled. If you want, you can overwrite it.
+  
+Example
+-------
+
+Provide a page with the phone number of a contact person:
+
+- Add a Phone Number field to the Page content type.
+
+- Create a content type called Contact Person, and add the same Phone Number
+  field as existing field.
+
+- Add an Entity Reference field to the Page content type.
+
+  - Additional behaviors: Entity Reference Autofill, Fields: Phone Number
+  - Number of values: 1
+  - Target bundles: People
+  - Widget type: Autocomplete
+
+- Create some Contact Person items and fill in their phone numbers.
+
+- Create a Page, and reference a Contact Person. The Phone Number field will
+  be autofilled.
 
 Issues
 ------
@@ -49,11 +83,13 @@ Current Maintainers
 -------------------
 
 - [Olaf Grabienski](https://github.com/olafgrabienski)
+- Looking for co-maintainers.
 
 Credits
 -------
 
 - Ported to Backdrop CMS by [Olaf Grabienski](https://github.com/olafgrabienski).
+- Porting support by [Herb](https://github.com/herbdool) and [argiepiano](https://github.com/argiepiano).
 - Originally written for Drupal by [Josef Gullström](https://www.drupal.org/u/jgullstr).
 
 License
