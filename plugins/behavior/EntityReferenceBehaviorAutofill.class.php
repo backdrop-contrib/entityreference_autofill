@@ -41,7 +41,7 @@ class EntityReferenceBehaviorHandlerAutofill extends EntityReferenceBehaviorHand
         $option_bundles = empty($target_bundles) ? $available_bundles : array_intersect($target_bundles, $available_bundles);
         if (!empty($option_bundles)) {
           $field_options[$field_name] = t(
-            '@field_label (@field_name): <em>Available in bundle(s) @bundles</em>',
+            '@field_label (@field_name). Available in bundle(s) @bundles',
             array(
             '@field_label' => $field_info['label'],
             '@field_name' => $field_name,
@@ -55,7 +55,7 @@ class EntityReferenceBehaviorHandlerAutofill extends EntityReferenceBehaviorHand
     $form['overwrite'] = array(
       '#type' => 'checkbox',
       '#title' => t('Overwrite existing data'),
-      '#description' => t('Select if you want to overwrite fields that already have values. <br/><em><strong>NOTE:</strong> Disabling this is experimental and might not work 100%. If you experience issues with fields being overridden nonetheless, please report what field type and settings this occurs on in the modules issue queue on drupal.org</em>'),
+      '#description' => t('Overwrites fields that already have values.<br><strong>Note:</strong> Disabling this option is experimental and may not work in every case.'),
       '#default_value' => isset($settings['overwrite']) ? $settings['overwrite'] : 1,
     );
 
@@ -73,7 +73,7 @@ class EntityReferenceBehaviorHandlerAutofill extends EntityReferenceBehaviorHand
         '#type' => 'checkboxes',
         '#title' => t('Fields'),
         '#options' => $field_options,
-        '#description' => t('Select which fields from the referenced entity you want to load on changing the value of this field.'),
+        '#description' => t('The fields from the referenced entity that will be loaded when the value of this Entity Reference field is changed.'),
         '#default_value' => isset($settings['fields']) ? $settings['fields'] : array(),
       );
     }
