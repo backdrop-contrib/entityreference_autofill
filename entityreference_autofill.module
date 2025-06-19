@@ -24,7 +24,7 @@
 function entityreference_autofill_entityreference_behavior_plugins() {
   $plugins['autofill'] = array(
     'title' => t('Entity Reference Autofill'),
-    'description' => t('Populate form fields on entity selection.'),
+    'description' => t('Populate other form fields on entity selection.'),
     'class' => 'EntityReferenceBehaviorHandlerAutofill',
     'behavior type' => 'instance',
   );
