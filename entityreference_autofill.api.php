@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Hook documentation for the Entity reference autofill module.
+ * Hook documentation for the Entity Reference Autofill module.
  */
 
 /**
@@ -15,7 +15,7 @@
  * @see entityreference_autofill_supported_widgets()
  */
 function hook_entityreference_autofill_supported_widgets() {
-  // Add support for organic groups widget.
+  // Add support for Organic Groups widget.
   // By setting value to NULL, no ajax wrapper will be
   // added to the field itself, but both group and
   // admin selection fields will be autofill-enabled.

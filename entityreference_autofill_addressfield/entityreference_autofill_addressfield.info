@@ -1,5 +1,5 @@
-name = Entity reference autofill addressfield
-description = Support for filling addressfield using Entity reference autofill.
+name = Entity Reference Autofill Addressfield
+description = Support for filling Address fields using Entity Reference Autofill.
 backdrop = 1.x
 type = module
 package = Fields

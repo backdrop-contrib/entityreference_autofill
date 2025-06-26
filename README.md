@@ -8,8 +8,7 @@ entity's field.
 Status
 ------
 
-The basics are working. It may be that the submodules aren't working yet. 
-Ready for testing, but not ready for a release.
+The basics are working, including the submodules.
 
 
 Installation
@@ -40,7 +39,7 @@ fields as follows:
 
 - Add an Entity Reference field to content type A.
   Supported widgets: Autocomplete, Select list, and Checkboxes/radio buttons.
-  Note that the field can only have one value; multi-value fields don't work.
+  Note: The field can only have one value; multi-value fields are not supported.
   
   - In the Entity Reference field instance settings, enable the option "Entity
     Reference Autofill" under "Additional behaviors". Select the source field you
@@ -49,8 +48,11 @@ fields as follows:
   
 - Create a content item and fill in the source field.
 
-- Create another content item and add a value to the Entity Reference field.
+- Create another content item and reference the content item from above in the Entity Reference field.
   The destination field will be autofilled. If you want, you can overwrite it.
+  
+To provide the autofill feature to more than one field, choose another field 
+and repeat the steps from above.
   
 Example
 -------
