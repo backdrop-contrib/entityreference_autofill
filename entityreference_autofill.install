@@ -43,8 +43,9 @@ function entityreference_autofill_set_module_weight() {
   }
 }
 
-// TODO The old hook_update_N functions cannot be applied to Backdrop.
-function entityreference_autofill_update_7000() { }
-
-// TODO The old hook_update_N functions cannot be applied to Backdrop.
-function entityreference_autofill_update_7001() { }
+/**
+ * Implements hook_update_last_removed().
+ */
+function entityreference_autofill_update_last_removed() {
+  return 7001;
+}
