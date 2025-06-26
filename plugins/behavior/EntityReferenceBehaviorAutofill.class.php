@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- * Entity reference behavior handler for autofill module.
+ * Entity Reference behavior handler for autofill module.
  */
 
 /**

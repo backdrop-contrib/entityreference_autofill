@@ -1,5 +1,5 @@
-name = Entity reference autofill OG
-description = Organic groups widget support for entity reference autofill (Under development, not thoroughly tested).
+name = Entity Reference Autofill OG
+description = Organic Groups widget support for Entity Reference Autofill.
 backdrop = 1.x
 type = module
 package = Fields
